@@ -1,1 +1,120 @@
-# create R version of file: 5-explore_cub_predictors.ipynb
+
+---
+title: "Exploring codon usage bias and predictors"
+author: "Mackenzie Johnson"
+date: "12/2/2021"
+output: html_document
+---
+
+This document is the R version of `5-explore_cub_predictors.ipynb`, created for easier extension of the analysis and figures created by Adam.
+
+
+```{r}
+library(tidyverse)
+
+```
+
+
+## Defining constants and save directories
+
+```{r}
+
+```
+
+
+## Data import
+
+#### Gene-specific measurements
+
+```{r}
+
+```
+
+#### Meta-data related to experiments / growth conditions
+
+```{r}
+
+```
+
+#### Condition-specific expression information
+
+```{r}
+
+```
+
+#### Expression sumary statistics calculated from the condition-specific expression matrices
+
+```{r}
+
+```
+
+#### Merge data
+
+```{r}
+
+```
+
+
+## Find the individual conditions whose gene expression is most (and least) correlated with CUB
+
+```{r}
+
+```
+
+
+## Determine which expression-based summary statistics are most correlated with CUB metrics
+
+```{r}
+
+```
+
+
+## Regression analysis to assess predictors of CUB
+
+```{r}
+
+```
+
+
+## Robustness check
+
+```{r}
+
+```
+
+
+## Visualizing various mult-variation models for robustness
+
+```{r}
+
+```
+
+
+## Finally, some mixed linear models
+
+#### Linear model with a fixed slope and random intercept
+
+```{r}
+
+```
+
+
+#### Linear model with random slope and fixed intercept
+
+```{r}
+
+```
+
+#### Linear model with random effect slope AND random intercept
+
+```{r}
+
+```
+
+#### Exponential with random slopes and random intercepts
+
+```{r}
+
+```
+
+

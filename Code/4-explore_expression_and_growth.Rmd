@@ -1,1 +1,90 @@
-# create R version of file: 4-explore_expression_and_growth.ipynb
+
+---
+title: "Exploring gene expression and growth"
+author: "Mackenzie Johnson"
+date: "12/2/2021"
+output: html_document
+---
+
+This document is the R version of `4-explore_expression_and_growth.ipynb`, created for easier extension of the analysis and figures created by Adam.
+
+
+```{r}
+library(tidyverse)
+
+```
+
+
+## Defining constants and save directories
+
+```{r}
+
+```
+
+
+## Read in the data
+
+```{r}
+
+```
+
+
+## Explore the relationship between conditions
+
+```{r}
+
+```
+
+
+#### Example scatterplots of two highly correlated conditions
+
+```{r}
+
+```
+
+
+#### Example scatterplots of two minimally correlated conditions
+
+```{r}
+
+```
+
+
+## Gene expression vs various dispersion metrics
+
+```{r}
+
+```
+
+
+## Explore growth rate data
+
+```{r}
+
+```
+
+
+#### Assess individual gene correlations with the growth rate data
+
+```{r}
+
+```
+
+
+#### Finding representative examples of genes
+
+```{r}
+
+```
+
+
+## Expression vs growth correlation
+
+```{r}
+
+```
+
+
+
+
+
