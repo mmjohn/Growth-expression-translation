@@ -11,7 +11,7 @@ This document is the R version of `4-explore_expression_and_growth.ipynb`, creat
 
 ```{r}
 library(tidyverse)
-
+library(glue)
 
 ```
 
@@ -20,37 +20,42 @@ library(tidyverse)
 
 ```{r}
 
-path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/processed_data'
+path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/processed_data/'
 path_to_figures <- NULL
 
-meta_data_files <- c(
-  'processed_metadata_ecoli.tsv',
-  'processed_metadata_ecoli_SPARSE.tsv',
-  'processed_metadata_ecoli_PROTEIN.tsv',
-  'processed_metadata_scer_RNA.tsv',
-  'processed_metadata_scer_PROTEIN.tsv'
-)
-
-expression_data_files
-
 data_key <- tibble(
-  set = c('ecoli_full', 'ecoli_sparse', 'ecoli_prot',
-               'scer_rna', 'scer_prot'),
+  set = c(
+    'ecoli_full', 
+    'ecoli_sparse', 
+    'ecoli_prot',
+    'scer_rna', 
+    'scer_prot'
+  ),
   meta_file = c(
-    'processed_metadata_ecoli.tsv',
-    'processed_metadata_ecoli_SPARSE.tsv',
-    'processed_metadata_ecoli_PROTEIN.tsv',
-    'processed_metadata_scer_RNA.tsv',
-    'processed_metadata_scer_PROTEIN.tsv'
+    glue({path_to_data}, 'processed_metadata_ecoli.tsv'),
+    glue({path_to_data}, 'processed_metadata_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_metadata_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_metadata_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_metadata_scer_PROTEIN.tsv')
+  ),
+  expression_file = c(
+    glue({path_to_data}, 'processed_expression_ecoli.tsv'),
+    glue({path_to_data}, 'processed_expression_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_expression_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_expression_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_expression_scer_PROTEIN.tsv')
+  ),
+  summary_file = c(
+    glue({path_to_data}, 'processed_expression_summary_ecoli.tsv'),
+    glue({path_to_data}, 'processed_expression_summary_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_expression_summary_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_expression_summary_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_expression_summary_scer_PROTEIN.tsv')
   )
 )
 
 # select dataset for analysis
 data_tag <- "ecoli_full"
-# data_tag <- "ecoli_sparse"
-# data_tag <- "ecoli_prot"
-# data_tag <- "scer_rna"
-# data_tag <- "scer_prot"
 
 ```
 
@@ -59,18 +64,16 @@ data_tag <- "ecoli_full"
 
 ```{r}
 
-if (data_tag == "ecoli_full") {
-  meta_df <- read_tsv(
-    file.path(path_to_data, 'processed_metadata_ecoli.tsv')
-    )
-} else if (data_tag == "ecoli_sparse") {
-  meta_df <- read_tsv(
-    file.path(path_to_data, 'processed_metadata_ecoli_SPARSE.tsv')
-  )
-} else if (data_tag == "ecoli_prot") {
-  meta_df <- read_tsv
-}
+# get relevant file names for data set of interest
+data_key %>% 
+  filter(set == data_tag) -> analysis_files
 
+# read in data
+meta_df <- read_tsv(analysis_files$meta_file)
+
+exp_df <- read_tsv(analysis_files$expression_file)
+
+exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```
 
