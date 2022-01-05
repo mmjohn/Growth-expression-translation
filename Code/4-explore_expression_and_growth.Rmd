@@ -9,7 +9,7 @@ output: html_document
 This document is the R version of `4-explore_expression_and_growth.ipynb`, created for easier extension of the analysis and figures created by Adam.
 
 
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
 library(glue)
 
@@ -18,7 +18,7 @@ library(glue)
 
 ## Defining constants and save directories
 
-```{r}
+```{r, message=FALSE}
 
 path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/processed_data/'
 path_to_figures <- NULL
@@ -62,7 +62,7 @@ data_tag <- "ecoli_full"
 
 ## Read in the data
 
-```{r}
+```{r, message=FALSE}
 
 # get relevant file names for data set of interest
 data_key %>% 
@@ -79,6 +79,24 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 
 ## Explore the relationship between conditions
+
+```{r, message=FALSE}
+
+#
+cond_cor_mat <- exp_df %>% 
+  select(-`log-TPM`) %>% 
+  cor(., method = "pearson")
+
+dim(cond_cor_mat)
+cond_cor_mat[1:4, 1:4]
+
+```
+
+```{r}
+
+
+
+```
 
 ```{r}
 
