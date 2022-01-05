@@ -110,55 +110,6 @@ pheatmap::pheatmap(
 ```
 
 
-```{r, message=FALSE, eval=FALSE, include=FALSE}
-
-#ggcorrplot
-
-# works but cannot easily add dendrogram
-library(corrplot)
-corrplot(
-  cond_cor_mat, 
-  method = 'color', 
-  order = 'hclust',
-  tl.pos = 'n', 
-  cl.pos = 'r',
-  col.lim = c(0,1),
-  #col = COL2('PiYG')
-  col = colorRampPalette(c("black", "black", "black", 
-                           "#440154FF", "#21908CFF", "#FDE725FF"))(50)
-)
-
-```
-
-```{r, eval=FALSE, include=FALSE}
-
-# can't add color scale???
-heatmap(
-  cond_cor_mat, 
-  hclustfun = hclust,
-  col = colorRampPalette(c("#440154FF", "#21908CFF", "#FDE725FF"))(25),
-  symm = TRUE,
-  labRow = FALSE,
-  labCol = FALSE
-)
-
-```
-
-```{r, eval=FALSE, include=FALSE}
-
-# ugly but easy to check individual sets
-library(heatmaply)
-heatmaply_cor(
-  cond_cor_mat,
-  limits = c(0,1),
-  row_dend_left = TRUE,
-  showticklabels = FALSE,
-  plot_method = "ggplot"
-)
-
-```
-
-
 ```{r}
 
 ```
