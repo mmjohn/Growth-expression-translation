@@ -12,7 +12,8 @@ This document is the R version of `4-explore_expression_and_growth.ipynb`, creat
 ```{r, message=FALSE}
 library(tidyverse)
 library(glue)
-
+library(pheatmap)
+library(viridis)
 ```
 
 
@@ -82,9 +83,9 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```{r, message=FALSE}
 
-#
+# get pearson's correlation coefficient for gene expression between all conditions
 cond_cor_mat <- exp_df %>% 
-  select(-`log-TPM`) %>% 
+  select(-`log-TPM`) %>% # remove text
   cor(., method = "pearson")
 
 dim(cond_cor_mat)
@@ -92,15 +93,76 @@ cond_cor_mat[1:4, 1:4]
 
 ```
 
-```{r}
 
+```{r, message=FALSE}
 
+pheatmap::pheatmap(
+  cond_cor_mat,
+  color = inferno(100),
+  cellheight = 2,
+  cellwidth = 2,
+  border_color = NA,
+  show_rownames = FALSE,
+  show_colnames = FALSE,
+  clustering_method = "average"
+)
 
 ```
 
+
+```{r, message=FALSE, eval=FALSE, include=FALSE}
+
+#ggcorrplot
+
+# works but cannot easily add dendrogram
+library(corrplot)
+corrplot(
+  cond_cor_mat, 
+  method = 'color', 
+  order = 'hclust',
+  tl.pos = 'n', 
+  cl.pos = 'r',
+  col.lim = c(0,1),
+  #col = COL2('PiYG')
+  col = colorRampPalette(c("black", "black", "black", 
+                           "#440154FF", "#21908CFF", "#FDE725FF"))(50)
+)
+
+```
+
+```{r, eval=FALSE, include=FALSE}
+
+# can't add color scale???
+heatmap(
+  cond_cor_mat, 
+  hclustfun = hclust,
+  col = colorRampPalette(c("#440154FF", "#21908CFF", "#FDE725FF"))(25),
+  symm = TRUE,
+  labRow = FALSE,
+  labCol = FALSE
+)
+
+```
+
+```{r, eval=FALSE, include=FALSE}
+
+# ugly but easy to check individual sets
+library(heatmaply)
+heatmaply_cor(
+  cond_cor_mat,
+  limits = c(0,1),
+  row_dend_left = TRUE,
+  showticklabels = FALSE,
+  plot_method = "ggplot"
+)
+
+```
+
+
 ```{r}
 
 ```
+
 
 
 #### Example scatterplots of two highly correlated conditions
