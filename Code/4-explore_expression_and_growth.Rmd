@@ -96,7 +96,9 @@ cond_cor_mat[1:4, 1:4]
 
 ```{r, message=FALSE}
 
-pheatmap::pheatmap(
+
+# make heatmap for correlations across conditions
+fig_exp_cond_corr <- pheatmap::pheatmap(
   cond_cor_mat,
   color = inferno(100),
   cellheight = 2,
@@ -107,19 +109,39 @@ pheatmap::pheatmap(
   clustering_method = "average"
 )
 
-```
-
-
-```{r}
+fig_exp_cond_corr
 
 ```
 
+
+```{r, message=FALSE}
+
+# visualize expression across conditions for each gene
+fig_cond_gene_exp <- pheatmap::pheatmap(
+  exp_df[, -1],
+  color = inferno(100),
+  show_rownames = FALSE,
+  show_colnames = FALSE,
+  clustering_method = "average"
+)
+
+fig_cond_gene_exp
+
+```
 
 
 #### Example scatterplots of two highly correlated conditions
 
 ```{r}
+test_mat <- cond_cor_mat
 
+diag(test_mat) <- 0
+
+max(test_mat)
+
+
+inds = which(mat == min(mat), arr.ind=TRUE)
+inds
 ```
 
 
