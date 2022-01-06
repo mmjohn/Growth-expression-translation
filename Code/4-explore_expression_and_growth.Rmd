@@ -96,7 +96,6 @@ cond_cor_mat[1:4, 1:4]
 
 ```{r, message=FALSE}
 
-
 # make heatmap for correlations across conditions
 fig_exp_cond_corr <- pheatmap::pheatmap(
   cond_cor_mat,
@@ -132,16 +131,35 @@ fig_cond_gene_exp
 
 #### Example scatterplots of two highly correlated conditions
 
-```{r}
+```{r, message=FALSE}
+
+# 
 test_mat <- cond_cor_mat
 
 diag(test_mat) <- 0
 
 max(test_mat)
 
+inds <- which(test_mat == max(test_mat), arr.ind=TRUE)
 
-inds = which(mat == min(mat), arr.ind=TRUE)
-inds
+cond_cor_mat[inds[1], inds[2]]
+
+rownames(inds) # "ytf__delydcI_ph5" "ytf__wt_ph5"
+
+exp_df[, inds[1]+1]
+exp_df[, inds[2]+1]
+
+max_cond_corr_df <- tibble(
+  exp_df[, inds[1]+1],
+  exp_df[, inds[2]+1]
+)
+
+colnames(max_cond_corr_df) <- c("cond1", "cond2")
+
+max_cond_corr_df %>% 
+  ggplot(aes(x = cond1, y = cond2)) +
+  geom_point()
+
 ```
 
 
