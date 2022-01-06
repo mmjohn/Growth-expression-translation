@@ -14,6 +14,8 @@ library(tidyverse)
 library(glue)
 library(pheatmap)
 library(viridis)
+library(cowplot)
+library(ggtext)
 ```
 
 
@@ -22,7 +24,7 @@ library(viridis)
 ```{r, message=FALSE}
 
 path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/processed_data/'
-path_to_figures <- NULL
+path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Manuscript/Figures'
 
 data_key <- tibble(
   set = c(
@@ -108,7 +110,7 @@ fig_exp_cond_corr <- pheatmap::pheatmap(
   clustering_method = "average"
 )
 
-fig_exp_cond_corr
+#fig_exp_cond_corr
 
 ```
 
@@ -124,7 +126,7 @@ fig_cond_gene_exp <- pheatmap::pheatmap(
   clustering_method = "average"
 )
 
-fig_cond_gene_exp
+#fig_cond_gene_exp
 
 ```
 
@@ -133,41 +135,146 @@ fig_cond_gene_exp
 
 ```{r, message=FALSE}
 
-# 
+# find max pearson's r value between two conditions
 test_mat <- cond_cor_mat
+diag(test_mat) <- 0 # exclude self correlations
+#max(test_mat)
+inds <- which(test_mat == max(test_mat), arr.ind = TRUE)
 
-diag(test_mat) <- 0
-
-max(test_mat)
-
-inds <- which(test_mat == max(test_mat), arr.ind=TRUE)
-
-cond_cor_mat[inds[1], inds[2]]
-
-rownames(inds) # "ytf__delydcI_ph5" "ytf__wt_ph5"
-
-exp_df[, inds[1]+1]
-exp_df[, inds[2]+1]
+#cond_cor_mat[inds[1], inds[2]]
+#rownames(inds) # "ytf__delydcI_ph5" "ytf__wt_ph5"
+#exp_df[, inds[1]+1]
+#exp_df[, inds[2]+1]
 
 max_cond_corr_df <- tibble(
   exp_df[, inds[1]+1],
   exp_df[, inds[2]+1]
 )
-
 colnames(max_cond_corr_df) <- c("cond1", "cond2")
 
-max_cond_corr_df %>% 
+# 
+r2_max_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
+    cond_cor_mat[inds[1], inds[2]], 3)}'),
+  x = 2,
+  y = 13.5
+)
+
+#
+fig_max <- max_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
-  geom_point()
+  geom_point(color = "#43a2ca", alpha = 0.3) +
+  scale_x_continuous(
+    limits = c(0, 15),
+    expand = c(0.01, 0.01),
+    name = glue('Condition {inds[1]} (log TPM)')
+  ) +
+  scale_y_continuous(
+    limits = c(0, 15),
+    expand = c(0.02, 0.02),
+    name = glue('Condition {inds[2]} (log TPM)')
+  ) +
+  #coord_fixed() +
+  geom_richtext(
+    data = r2_max_text,
+    aes(x = x, y = y,label = label),
+    label.color = NA,
+    inherit.aes = FALSE
+  ) +
+  theme_bw()
+
+fig_max
 
 ```
 
 
 #### Example scatterplots of two minimally correlated conditions
 
-```{r}
+```{r, message=FALSE}
+
+# find min pearson's r value between two conditions
+inds_min <- which(cond_cor_mat == min(cond_cor_mat), arr.ind = TRUE)
+#cond_cor_mat[inds_min[1], inds_min[2]]
+#rownames(inds_min) # "ica__cytd_rib"    "ssw__glc_xyl_glc"
+
+min_cond_corr_df <- tibble(
+  exp_df[, inds_min[1]+1],
+  exp_df[, inds_min[2]+1]
+)
+colnames(min_cond_corr_df) <- c("cond1", "cond2")
+
+#
+r2_min_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(cond_cor_mat[inds_min[1], inds_min[2]]*
+    cond_cor_mat[inds_min[1], inds_min[2]], 3)}'),
+  x = 2,
+  y = 13.5
+)
+
+#
+fig_min <- min_cond_corr_df %>% 
+  ggplot(aes(x = cond1, y = cond2)) +
+  geom_point(color = "#43a2ca", alpha = 0.3) +
+  scale_x_continuous(
+    limits = c(0, 15),
+    expand = c(0.01, 0.01),
+    name = glue('Condition {inds_min[1]} (log TPM)')
+  ) +
+  scale_y_continuous(
+    limits = c(0, 15),
+    expand = c(0.02, 0.02),
+    name = glue('Condition {inds_min[2]} (log TPM)')
+  ) +
+  #coord_fixed() +
+  geom_richtext(
+    data = r2_min_text,
+    aes(x = x, y = y,label = label),
+    label.color = NA,
+    inherit.aes = FALSE
+  ) +
+  theme_bw()
+
+fig_min
 
 ```
+
+
+### Figure 2 
+```{r, message=FALSE}
+
+# combine figures for subplot b
+fig_2b <- plot_grid(fig_max, fig_min, nrow = 2)
+
+# combine all figures
+fig_2 <- plot_grid(
+  fig_exp_cond_corr[[4]], fig_2b, 
+  nrow = 1,
+  labels = "AUTO",
+  scale = c(1, 0.85)
+  # align = "h",
+  # axis = "l"
+)
+
+fig_2
+
+```
+
+```{r, include=FALSE, eval=FALSE}
+
+fig_2_fixed <- cowplot::ggdraw(fig_2) + 
+  theme(plot.background = element_rect(fill="white", color = NA))
+
+# save plot
+save_plot(
+  file.path(path_to_figures, 'mackenzie', 'fig2.png'),
+  fig_2_fixed, ncol = 1, nrow = 1, base_height = 5.21, #base_height = 5.71,
+  base_asp = 1.618, base_width = NULL
+)
+
+```
+
 
 
 ## Gene expression vs various dispersion metrics
