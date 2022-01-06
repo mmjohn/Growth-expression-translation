@@ -138,7 +138,6 @@ fig_cond_gene_exp <- pheatmap::pheatmap(
 # find max pearson's r value between two conditions
 test_mat <- cond_cor_mat
 diag(test_mat) <- 0 # exclude self correlations
-#max(test_mat)
 inds <- which(test_mat == max(test_mat), arr.ind = TRUE)
 
 #cond_cor_mat[inds[1], inds[2]]
@@ -152,7 +151,7 @@ max_cond_corr_df <- tibble(
 )
 colnames(max_cond_corr_df) <- c("cond1", "cond2")
 
-# 
+# store R^2 value for use in plot
 r2_max_text <- data.frame(
   label = glue(
     '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
@@ -161,7 +160,7 @@ r2_max_text <- data.frame(
   y = 13.5
 )
 
-#
+# visualize two conditions with largest correlation
 fig_max <- max_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
   geom_point(color = "#43a2ca", alpha = 0.3) +
@@ -202,9 +201,9 @@ min_cond_corr_df <- tibble(
   exp_df[, inds_min[1]+1],
   exp_df[, inds_min[2]+1]
 )
-colnames(min_cond_corr_df) <- c("cond1", "cond2")
+colnames(min_cond_corr_df) <- c("cond1", "cond2") # rename for easier reproducibility
 
-#
+# store R^2 value for use in plot
 r2_min_text <- data.frame(
   label = glue(
     '*R*<sup>2</sup> = {round(cond_cor_mat[inds_min[1], inds_min[2]]*
@@ -213,7 +212,7 @@ r2_min_text <- data.frame(
   y = 13.5
 )
 
-#
+# visualize the conditions with the smallest correlation
 fig_min <- min_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
   geom_point(color = "#43a2ca", alpha = 0.3) +
@@ -263,6 +262,7 @@ fig_2
 
 ```{r, include=FALSE, eval=FALSE}
 
+# needs white background due to transparency of heatmap and outer rectangle
 fig_2_fixed <- cowplot::ggdraw(fig_2) + 
   theme(plot.background = element_rect(fill="white", color = NA))
 
@@ -275,9 +275,21 @@ save_plot(
 
 ```
 
+```{r, message=FALSE, include=FALSE}
+
+# remove intermediate plots from memory
+rm(fig_exp_cond_corr, fig_cond_gene_exp, 
+   fig_max, fig_min, fig_2b, fig_2)
+
+# remove unneccessary data frames and values
+rm(max_cond_corr_df, min_cond_corr_df, 
+   r2_max_text, r2_min_text, test_mat,
+   inds, inds_min)
+
+```
 
 
-## Gene expression vs various dispersion metrics
+#### Gene expression vs various dispersion metrics
 
 ```{r}
 
