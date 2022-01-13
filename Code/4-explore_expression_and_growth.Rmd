@@ -10,12 +10,14 @@ This document is the R version of `4-explore_expression_and_growth.ipynb`, creat
 
 
 ```{r, message=FALSE}
+
 library(tidyverse)
 library(glue)
 library(pheatmap)
 library(viridis)
 library(cowplot)
 library(ggtext)
+
 ```
 
 
@@ -156,14 +158,14 @@ r2_max_text <- data.frame(
   label = glue(
     '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
     cond_cor_mat[inds[1], inds[2]], 3)}'),
-  x = 2,
+  x = 3,
   y = 13.5
 )
 
 # visualize two conditions with largest correlation
 fig_max <- max_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
-  geom_point(color = "#43a2ca", alpha = 0.3) +
+  geom_point(color = "black", alpha = 0.3) +
   scale_x_continuous(
     limits = c(0, 15),
     expand = c(0.01, 0.01),
@@ -208,14 +210,14 @@ r2_min_text <- data.frame(
   label = glue(
     '*R*<sup>2</sup> = {round(cond_cor_mat[inds_min[1], inds_min[2]]*
     cond_cor_mat[inds_min[1], inds_min[2]], 3)}'),
-  x = 2,
+  x = 3,
   y = 13.5
 )
 
 # visualize the conditions with the smallest correlation
 fig_min <- min_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
-  geom_point(color = "#43a2ca", alpha = 0.3) +
+  geom_point(color = "black", alpha = 0.3) +
   scale_x_continuous(
     limits = c(0, 15),
     expand = c(0.01, 0.01),
@@ -291,7 +293,51 @@ rm(max_cond_corr_df, min_cond_corr_df,
 
 #### Gene expression vs various dispersion metrics
 
-```{r}
+```{r, message=FALSE}
+
+# calculate mean expression and dispersion metrics
+exp_metrics <- exp_df %>% 
+  rowwise() %>% 
+  mutate(
+    exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)),
+    exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38))
+  ) %>% 
+  select(`log-TPM`, exp_mean, exp_sd) %>%
+  mutate(exp_cv = exp_sd/exp_mean)
+
+# calculate correlation of relationship between metrics
+spear_rho_sd <- cor(
+  exp_metrics$exp_mean, exp_metrics$exp_sd, 
+  method = "spearman"
+)
+spear_rho_cv <- cor(
+  exp_metrics$exp_mean, exp_metrics$exp_cv, 
+  method = "spearman"
+)
+
+# visualize expression vs standard dev
+exp_metrics %>% 
+  ggplot(aes(x = exp_mean, y = exp_sd)) +
+  geom_point(alpha = 0.5) +
+  scale_x_continuous(name = "Expression mean") +
+  scale_y_continuous(name = "Standard deviation") +
+  labs(title = glue("Spearman's &rho; = {round(spear_rho_sd,4)}")) +
+  theme_bw() +
+  theme(plot.title = element_markdown())
+
+```
+
+```{r, message=FALSE}
+
+# visualize expression vs coeff of var
+exp_metrics %>% 
+  ggplot(aes(x = exp_mean, y = exp_cv)) +
+  geom_point(alpha = 0.5) +
+  scale_x_continuous(name = "Expression mean") +
+  scale_y_continuous(name = "Coefficient of variation") +
+  labs(title = glue("Spearman's &rho; = {round(spear_rho_cv,4)}")) +
+  theme_bw() +
+  theme(plot.title = element_markdown())
 
 ```
 
