@@ -344,12 +344,40 @@ exp_metrics %>%
 
 ## Explore growth rate data
 
-```{r}
+```{r, message=FALSE}
+
+meta_df %>% 
+  ggplot(aes(x = `Growth Rate (1/hr)`)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(
+    limits = c(0, 1.5),
+    expand = c(0,0)
+  ) +
+  scale_y_continuous(
+    name = "Count", 
+    expand = c(0,0)
+  ) +
+  theme_minimal_hgrid()
+
+# slowest rate
+slow_rate <- min(meta_df$`Growth Rate (1/hr)`)
+# fastest rate
+fast_rate <- max(meta_df$`Growth Rate (1/hr)`)
+# slowest dt
+slow_dt <- log(2)/slow_rate
+# fastest dt
+fast_dt <- log(2)/fast_rate
 
 ```
 
+- Slowest rate: `r slow_rate`
+- Fastest rate: `r fast_rate`
+- Slowest doubling time: `r slow_dt`
+- Fastest doubling time: `r fast_dt`
 
 #### Assess individual gene correlations with the growth rate data
+
+I'm only doing a single randomization/permutation here, and it should of course be noted that this randomization is a bit unfair since it destroys the underlying correlation structure between conditions. However, a permutation strategy that accounts for that structure would be very difficult and the only point here is to show that there are some genes that are more/less correlated with growth than you might expect by chance alone.
 
 ```{r}
 
