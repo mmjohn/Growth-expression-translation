@@ -379,7 +379,9 @@ fast_dt <- log(2)/fast_rate
 
 I'm only doing a single randomization/permutation here, and it should of course be noted that this randomization is a bit unfair since it destroys the underlying correlation structure between conditions. However, a permutation strategy that accounts for that structure would be very difficult and the only point here is to show that there are some genes that are more/less correlated with growth than you might expect by chance alone.
 
-```{r}
+```{r, message=FALSE}
+
+
 
 ```
 
@@ -396,8 +398,4 @@ I'm only doing a single randomization/permutation here, and it should of course 
 ```{r}
 
 ```
-
-
-
-
 
