@@ -60,7 +60,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "ecoli_full"
+data_tag <- "ecoli_prot" #"ecoli_full"
 
 ```
 
@@ -88,9 +88,15 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 ```{r, message=FALSE}
 
 # get pearson's correlation coefficient for gene expression between all conditions
-cond_cor_mat <- exp_df %>% 
-  select(-`log-TPM`) %>% # remove text
-  cor(., method = "pearson")
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  cond_cor_mat <- exp_df %>% 
+    select(-`log-TPM`) %>% 
+    cor(., method = "pearson")
+} else {
+  cond_cor_mat <- exp_df %>% 
+    select(-`Gene`) %>% 
+    cor(., method = "pearson")
+}
 
 dim(cond_cor_mat)
 cond_cor_mat[1:4, 1:4]
@@ -102,10 +108,10 @@ cond_cor_mat[1:4, 1:4]
 
 # make heatmap for correlations across conditions
 fig_exp_cond_corr <- pheatmap::pheatmap(
-  cond_cor_mat,
+  cond_cor_mat^2, # visualize R^2 instead of Pearson's corr
   color = inferno(100),
-  cellheight = 2,
-  cellwidth = 2,
+  cellheight = 10, #2 for ecoli_full, 6 for ecoli_sparse and ecoli_prot, 10 for scer_rna and scer_prot
+  cellwidth = 10, #2,
   border_color = NA,
   show_rownames = FALSE,
   show_colnames = FALSE,
@@ -117,7 +123,7 @@ fig_exp_cond_corr <- pheatmap::pheatmap(
 ```
 
 
-```{r, message=FALSE}
+```{r, message=FALSE, include=FALSE, eval=FALSE}
 
 # visualize expression across conditions for each gene
 fig_cond_gene_exp <- pheatmap::pheatmap(
@@ -151,41 +157,119 @@ max_cond_corr_df <- tibble(
   exp_df[, inds[1]+1],
   exp_df[, inds[2]+1]
 )
+max_names <- colnames(max_cond_corr_df)
 colnames(max_cond_corr_df) <- c("cond1", "cond2")
 
 # store R^2 value for use in plot
-r2_max_text <- data.frame(
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  r2_max_text <- data.frame(
   label = glue(
     '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
     cond_cor_mat[inds[1], inds[2]], 3)}'),
-  x = 3,
+  x = 3, 
   y = 13.5
 )
+} else if (data_tag == "ecoli_prot") {
+  r2_max_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
+    cond_cor_mat[inds[1], inds[2]], 3)}'),
+  x = -2, 
+  y = 3.5 
+)
+} else if (data_tag == "scer_prot") {
+  r2_max_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
+    cond_cor_mat[inds[1], inds[2]], 3)}'),
+  x = -4, 
+  y = 7 
+)
+} else {
+  r2_max_text <- data.frame(
+    label = glue(
+      '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds[2]]*
+      cond_cor_mat[inds[1], inds[2]], 3)}'
+    ),
+    x = 3.5,
+    y = 9
+  )
+}
 
 # visualize two conditions with largest correlation
-fig_max <- max_cond_corr_df %>% 
-  ggplot(aes(x = cond1, y = cond2)) +
-  geom_point(color = "black", alpha = 0.3) +
-  scale_x_continuous(
-    limits = c(0, 15),
-    expand = c(0.01, 0.01),
-    name = glue('Condition {inds[1]} (log TPM)')
-  ) +
-  scale_y_continuous(
-    limits = c(0, 15),
-    expand = c(0.02, 0.02),
-    name = glue('Condition {inds[2]} (log TPM)')
-  ) +
-  #coord_fixed() +
-  geom_richtext(
-    data = r2_max_text,
-    aes(x = x, y = y,label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
-  theme_bw()
-
-fig_max
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  fig_max <- max_cond_corr_df %>% 
+    ggplot(aes(x = cond1, y = cond2)) +
+      geom_point(color = "black", alpha = 0.3) +
+      scale_x_continuous(
+        limits = cc(0, 15),
+        expand = c(0.01, 0.01),
+        name = glue('Condition {inds[1]} (log TPM)')
+      ) +
+    scale_y_continuous(
+      limits = c(0, 15), 
+      expand = c(0.02, 0.02),
+      name = glue('Condition {inds[2]} (log TPM)')
+    ) +
+    #coord_fixed() +
+    geom_richtext(
+      data = r2_max_text,
+      aes(x = x, y = y,label = label),
+      label.color = NA,
+      inherit.aes = FALSE
+    ) +
+    theme_half_open() +
+    background_grid()
+} else if (data_tag %in% c("ecoli_prot", "scer_prot")) {
+  fig_max <- max_cond_corr_df %>% 
+    ggplot(aes(x = cond1, y = cond2)) +
+      geom_point(color = "black", alpha = 0.3) +
+      scale_x_continuous(
+        #limits = c(0, 5), 
+        #expand = c(0.01, 0.01),
+        name = glue('Condition {inds[1]}')
+        # name = glue('Condition {inds[1]}: {max_names[1]}')
+      ) +
+      scale_y_continuous(
+        #limits = c(0, 5),
+        #expand = c(0.02, 0.02),
+        name = glue('Condition {inds[2]}')
+        # name = glue('Condition {inds[2]}: {max_names[2]}')
+      ) +
+      #coord_fixed() +
+      geom_richtext(
+        data = r2_max_text,
+        aes(x = x, y = y,label = label),
+        label.color = NA,
+        inherit.aes = FALSE
+      ) +
+      theme_half_open() +
+      background_grid()
+} else {
+  fig_max <- max_cond_corr_df %>% 
+    ggplot(aes(x = cond1, y = cond2)) +
+      geom_point(color = "black", alpha = 0.3) +
+      scale_x_continuous(
+        limits = c(2.5, 10), 
+        expand = c(0.01, 0.01),
+        name = glue('Condition {inds[1]} (log TPM)')
+      ) +
+      scale_y_continuous(
+        limits = c(2.5, 10),
+        expand = c(0.02, 0.02),
+        name = glue('Condition {inds[2]} (log TPM)')
+      ) +
+      #coord_fixed() +
+      geom_richtext(
+        data = r2_max_text,
+        aes(x = x, y = y,label = label),
+        label.color = NA,
+        inherit.aes = FALSE
+      ) +
+      theme_half_open() +
+      background_grid()
+}
+#fig_max
 
 ```
 
@@ -203,41 +287,121 @@ min_cond_corr_df <- tibble(
   exp_df[, inds_min[1]+1],
   exp_df[, inds_min[2]+1]
 )
+min_names <- colnames(min_cond_corr_df)
 colnames(min_cond_corr_df) <- c("cond1", "cond2") # rename for easier reproducibility
 
 # store R^2 value for use in plot
-r2_min_text <- data.frame(
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  r2_min_text <- data.frame(
+    label = glue(
+      '*R*<sup>2</sup> = {round(cond_cor_mat[inds_min[1], inds_min[2]]*
+      cond_cor_mat[inds_min[1], inds_min[2]], 3)}'
+    ),
+    x = 3,
+    y = 13.5
+  )
+} else if (data_tag == "ecoli_prot") {
+  r2_min_text <- data.frame(
   label = glue(
     '*R*<sup>2</sup> = {round(cond_cor_mat[inds_min[1], inds_min[2]]*
-    cond_cor_mat[inds_min[1], inds_min[2]], 3)}'),
-  x = 3,
-  y = 13.5
+    cond_cor_mat[inds[1], inds[2]], 3)}'),
+  x = -2, 
+  y = 3.5 
 )
+} else if (data_tag == "scer_prot") {
+  r2_min_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(cond_cor_mat[inds[1], inds_min[2]]*
+    cond_cor_mat[inds[1], inds[2]], 3)}'),
+  x = -4, 
+  y = 7 
+)
+} else {
+  r2_min_text <- data.frame(
+    label = glue(
+      '*R*<sup>2</sup> = {round(cond_cor_mat[inds_min[1], inds_min[2]]*
+      cond_cor_mat[inds_min[1], inds_min[2]], 3)}'
+    ),
+    x = 3.5,
+    y = 9
+  )
+}
 
 # visualize the conditions with the smallest correlation
-fig_min <- min_cond_corr_df %>% 
-  ggplot(aes(x = cond1, y = cond2)) +
-  geom_point(color = "black", alpha = 0.3) +
-  scale_x_continuous(
-    limits = c(0, 15),
-    expand = c(0.01, 0.01),
-    name = glue('Condition {inds_min[1]} (log TPM)')
-  ) +
-  scale_y_continuous(
-    limits = c(0, 15),
-    expand = c(0.02, 0.02),
-    name = glue('Condition {inds_min[2]} (log TPM)')
-  ) +
-  #coord_fixed() +
-  geom_richtext(
-    data = r2_min_text,
-    aes(x = x, y = y,label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
-  theme_bw()
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  fig_min <- min_cond_corr_df %>% 
+    ggplot(aes(x = cond1, y = cond2)) +
+    geom_point(color = "black", alpha = 0.3) +
+    scale_x_continuous(
+      limits = c(0, 15),
+      expand = c(0.01, 0.01),
+      name = glue('Condition {inds_min[1]} (log TPM)')
+    ) +
+    scale_y_continuous(
+      limits = c(0, 15),
+      expand = c(0.02, 0.02),
+      name = glue('Condition {inds_min[2]} (log TPM)')
+    ) +
+    #coord_fixed() +
+    geom_richtext(
+      data = r2_min_text,
+      aes(x = x, y = y,label = label),
+      label.color = NA,
+      inherit.aes = FALSE
+    ) +
+    theme_half_open() +
+    background_grid()
+} else if (data_tag %in% c("ecoli_prot", "scer_prot")) {
+  fig_min <- min_cond_corr_df %>% 
+    ggplot(aes(x = cond1, y = cond2)) +
+    geom_point(color = "black", alpha = 0.3) +
+    scale_x_continuous(
+      #limits = c(0, 5),
+      #expand = c(0.01, 0.01),
+      name = glue('Condition {inds_min[1]}')
+      # name = glue('Condition {inds_min[1]}: {min_names[1]}')
+    ) +
+    scale_y_continuous(
+      #limits = c(0, 5),
+      #expand = c(0.02, 0.02),
+      name = glue('Condition {inds_min[2]}')
+      # name = glue('Condition {inds_min[2]}: {min_names[2]}')
+    ) +
+    #coord_fixed() +
+    geom_richtext(
+      data = r2_min_text,
+      aes(x = x, y = y,label = label),
+      label.color = NA,
+      inherit.aes = FALSE
+    ) +
+    theme_half_open() +
+    background_grid()
+} else {
+    fig_min <- min_cond_corr_df %>% 
+    ggplot(aes(x = cond1, y = cond2)) +
+      geom_point(color = "black", alpha = 0.3) +
+      scale_x_continuous(
+        limits = c(2.5, 10), 
+        expand = c(0.01, 0.01),
+        name = glue('Condition {inds_min[1]} (log TPM)')
+      ) +
+      scale_y_continuous(
+        limits = c(2.5, 10),
+        expand = c(0.02, 0.02),
+        name = glue('Condition {inds_min[2]} (log TPM)')
+      ) +
+      #coord_fixed() +
+      geom_richtext(
+        data = r2_min_text,
+        aes(x = x, y = y,label = label),
+        label.color = NA,
+        inherit.aes = FALSE
+      ) +
+      theme_half_open() +
+      background_grid()
+}
 
-fig_min
+#fig_min
 
 ```
 
@@ -262,6 +426,7 @@ fig_2
 
 ```
 
+
 ```{r, include=FALSE, eval=FALSE}
 
 # needs white background due to transparency of heatmap and outer rectangle
@@ -270,17 +435,26 @@ fig_2_fixed <- cowplot::ggdraw(fig_2) +
 
 # save plot
 save_plot(
-  file.path(path_to_figures, 'mackenzie', 'fig2.png'),
-  fig_2_fixed, ncol = 1, nrow = 1, base_height = 5.21, #base_height = 5.71,
-  base_asp = 1.618, base_width = NULL
+  file.path(
+    path_to_figures, 
+    'mackenzie', 
+    glue('fig_corr_{data_tag}.png')   # file name
+  ),
+  fig_2_fixed, 
+  ncol = 1, 
+  nrow = 1, 
+  base_height = 5.21, #base_height = 5.71,
+  base_asp = 1.618, 
+  base_width = NULL
 )
 
 ```
 
+
 ```{r, message=FALSE, include=FALSE}
 
 # remove intermediate plots from memory
-rm(fig_exp_cond_corr, fig_cond_gene_exp, 
+rm(fig_exp_cond_corr, #fig_cond_gene_exp, 
    fig_max, fig_min, fig_2b, fig_2)
 
 # remove unneccessary data frames and values
