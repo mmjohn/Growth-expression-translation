@@ -60,7 +60,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "ecoli_prot" #"ecoli_full"
+data_tag <- "ecoli_full" 
 
 ```
 
@@ -110,7 +110,7 @@ cond_cor_mat[1:4, 1:4]
 fig_exp_cond_corr <- pheatmap::pheatmap(
   cond_cor_mat^2, # visualize R^2 instead of Pearson's corr
   color = inferno(100),
-  cellheight = 10, #2 for ecoli_full, 6 for ecoli_sparse and ecoli_prot, 10 for scer_rna and scer_prot
+  cellheight = 10, #2 for ecoli_full, 6 for ecoli_sparse, 10 for scer_rna, ecoli_prot, and scer_prot
   cellwidth = 10, #2,
   border_color = NA,
   show_rownames = FALSE,
@@ -460,7 +460,7 @@ rm(fig_exp_cond_corr, #fig_cond_gene_exp,
 # remove unneccessary data frames and values
 rm(max_cond_corr_df, min_cond_corr_df, 
    r2_max_text, r2_min_text, test_mat,
-   inds, inds_min)
+   inds, inds_min, max_names, min_names)
 
 ```
 
@@ -470,14 +470,18 @@ rm(max_cond_corr_df, min_cond_corr_df,
 ```{r, message=FALSE}
 
 # calculate mean expression and dispersion metrics
-exp_metrics <- exp_df %>% 
-  rowwise() %>% 
-  mutate(
-    exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)),
-    exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38))
-  ) %>% 
-  select(`log-TPM`, exp_mean, exp_sd) %>%
-  mutate(exp_cv = exp_sd/exp_mean)
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  exp_metrics <- exp_df %>% 
+    rowwise() %>% 
+    mutate(
+      exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)),
+      exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38))
+    ) %>% 
+    select(`log-TPM`, exp_mean, exp_sd) %>%
+    mutate(exp_cv = exp_sd/exp_mean)
+  colnames(exp_metrics) <- c("gene", "exp_mean", "exp_sd", "exp_cv")
+}
+
 
 # calculate correlation of relationship between metrics
 spear_rho_sd <- cor(

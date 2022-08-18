@@ -9,55 +9,318 @@ output: html_document
 This document is the R version of `5-explore_cub_predictors.ipynb`, created for easier extension of the analysis and figures created by Adam.
 
 
-```{r}
+```{r, message=FALSE}
+
 library(tidyverse)
+library(glue)
+library(viridis)
+library(cowplot)
+library(ggtext)
 
 ```
 
 
 ## Defining constants and save directories
 
-```{r}
+```{r, message=FALSE}
+
+path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/'
+path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Manuscript/Figures'
+
+data_key <- tibble(
+  set = c(
+    'ecoli_full', 
+    'ecoli_sparse', 
+    'ecoli_prot',
+    'scer_rna', 
+    'scer_prot'
+  ),
+  cub_file = c(
+    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
+    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
+    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
+    glue({path_to_data}, 'scer_info/', 'current_scer_master_table.tsv'),
+    glue({path_to_data}, 'scer_info/', 'current_scer_master_table.tsv')
+  ),
+  meta_file = c(
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_scer_PROTEIN.tsv')
+  ),
+  expression_file = c(
+    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_scer_PROTEIN.tsv')
+  ),
+  summary_file = c(
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_scer_PROTEIN.tsv')
+  )
+)
+
+# select dataset for analysis
+data_tag <- "scer_prot" 
+metric <- "CAI"
 
 ```
 
 
 ## Data import
 
-#### Gene-specific measurements
+```{r, message=FALSE}
 
-```{r}
+# get relevant file names for data set of interest
+data_key %>% 
+  filter(set == data_tag) -> analysis_files
+
+# read in data
+# gene-specific measurements
+full_df <- read_tsv(analysis_files$cub_file)
+full_df <- full_df %>% 
+  drop_na(CAI) # replace with metric
+full_df$roc_semppr_mean <- log10(full_df$roc_semppr_mean)
+
+# meta-data related to experiments / growth conditions
+meta_df <- read_tsv(analysis_files$meta_file)
+
+# condition-specific expression information
+exp_df <- read_tsv(analysis_files$expression_file)
+
+# expression sumary statistics calculated from the condition-specific expression matrices
+exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```
 
-#### Meta-data related to experiments / growth conditions
-
-```{r}
-
-```
-
-#### Condition-specific expression information
-
-```{r}
-
-```
-
-#### Expression sumary statistics calculated from the condition-specific expression matrices
-
-```{r}
-
-```
 
 #### Merge data
 
-```{r}
+```{r, message=FALSE}
+
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  full_df <- inner_join(full_df, exp_sum_df, by = c("locus_tag" = "log-TPM"))
+  rm(exp_sum_df)
+} else if (data_tag == "ecoli_prot") {
+  full_df <- inner_join(full_df, exp_sum_df, by = c("gene" = "Gene"))
+  rm(exp_sum_df)
+} else {
+  full_df <- full_df %>% 
+    filter(gene != "hypothetical protein") %>% 
+    mutate(gene = str_sub(.$gene, start = 1, end = -2)) 
+  full_df$gene <- toupper(full_df$gene)
+  full_df<- inner_join(full_df, exp_sum_df, by = c("gene" = "Gene"))
+  rm(exp_sum_df)
+}
 
 ```
 
 
 ## Find the individual conditions whose gene expression is most (and least) correlated with CUB
 
-```{r}
+```{r, message=FALSE}
+
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  # get df
+  corr_df <- full_df %>% 
+    select(locus_tag, CAI) %>% 
+    left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:32], method = "pearson") %>% #3:105 for full
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+} else if (data_tag == "ecoli_prot") {
+  # get df
+  corr_df <- full_df %>% 
+    select(gene, CAI) %>% 
+    left_join(., exp_df, by = c("gene" = "Gene")) 
+   # correlations
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:22], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+} else {
+  # get df
+  corr_df <- full_df %>% 
+    select(gene, CAI) %>% 
+    left_join(., exp_df, by = c("gene" = "Gene")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:16], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+}
+
+min_corr <- exp_cub_corr %>% 
+  filter(r2 == min(r2))
+max_corr <- exp_cub_corr %>% 
+  filter(r2 == max(r2))
+
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  
+  fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `ica__cytd_rib`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `rpoB__rpoBE672K_lb`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+} else if (data_tag == "ecoli_prot") {
+  
+  fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `Galactose`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `LB`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+} else if (data_tag == "scer_rna") {
+  
+  fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `NH4_0.05_7.5_0.5`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `NH4_0.35_7.5_0.5`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+} else {
+  
+   fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `Phe_0.1_7.5_12.35`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `NH4_0.35_7.5_0.5`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+}
+
+
+fig_corr_grow <- meta_df %>% 
+  select(Simple_sample_id, `Growth Rate (1/hr)`) %>% 
+  inner_join(., exp_cub_corr, by = c("Simple_sample_id" = "condition")) %>% 
+  ggplot() +
+    aes(x = `Growth Rate (1/hr)`, y = r2) +
+    geom_point(size = 2, alpha = 0.75) +
+    scale_y_continuous(name = '*R*<sup>2</sup> (CAI vs expression)') +
+    theme_minimal_grid() +
+    theme(axis.title.y = element_markdown())
+
+
+```
+
+## Growth rate data
+
+```{r, message=FALSE}
+
+fig_gr_hist <- meta_df %>% 
+  ggplot(aes(x = `Growth Rate (1/hr)`)) +
+  geom_histogram(binwidth = 0.05) +
+  scale_x_continuous(
+    limits = c(0, 1.5),
+    expand = c(0,0)
+  ) +
+  scale_y_continuous(
+    name = "Count", 
+    expand = c(0,0)
+  ) +
+  theme_minimal_hgrid()
+
+```
+
+
+# Figure 3
+```{r, message=FALSE}
+
+fig_3 <- plot_grid(
+  fig_corr_min, fig_corr_max, fig_gr_hist, fig_corr_grow,
+  nrow = 2,
+  labels = "AUTO"
+) +
+  theme(plot.background = element_rect(fill="white", color = NA))
+
+fig_3
+
+save_plot(
+  file.path(
+    path_to_figures, 
+    'mackenzie', 
+    glue('fig_{metric}_exp_gr_{data_tag}.png')   # file name
+  ),
+  fig_3, 
+  base_height = 6.71,
+  base_asp = 1.618, 
+  base_width = NULL
+)
+
+```
+
+Clean up
+```{r, message=FALSE}
+
+rm(fig_corr_max, fig_corr_min, fig_corr_grow, fig_gr_hist,
+   min_corr, max_corr)
 
 ```
 
