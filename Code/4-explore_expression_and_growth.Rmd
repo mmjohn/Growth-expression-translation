@@ -60,7 +60,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "ecoli_full" 
+data_tag <- "scer_prot" 
 
 ```
 
@@ -571,9 +571,170 @@ I'm only doing a single randomization/permutation here, and it should of course 
 ```
 
 
+
 ## Expression vs growth correlation
 
-```{r}
+```{r, message=FALSE}
+
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  exp_gr_df <- exp_df %>% 
+    gather(-`log-TPM`,
+           key = "condition",
+           value = "expression") %>% 
+    spread(`log-TPM`, expression)
+} else {
+  exp_gr_df <- exp_df %>% 
+    gather(-Gene,
+           key = "condition",
+           value = "expression") %>% 
+    spread(Gene, expression)
+}
+
+exp_gr_df <- meta_df %>% 
+    select(`Simple_sample_id`, `Growth Rate (1/hr)`) %>% 
+    inner_join(., exp_gr_df, by = c("Simple_sample_id" = "condition"))
+
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_prot", "scer_rna", "scer_prot")) {  
+  exp_gr_corr <- cor(exp_gr_df[2], exp_gr_df[3:ncol(exp_gr_df)], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "genes",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+  
+  perm_mat <- lapply(exp_gr_df[3:ncol(exp_gr_df)], sample) %>% as_tibble()
+  exp_gr_perm <- cor(exp_gr_df[2], perm_mat, method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "genes",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+  
+  perm_df <- tibble(
+    exp_gr_corr$pearsons,
+    exp_gr_perm$pearsons
+  ) %>% 
+    gather(., "set", "pearsons")
+}
+
+exp_gr_corr%>% filter(pearsons == max(pearsons)) %>% .$genes
+exp_gr_corr%>% filter(pearsons == min(pearsons)) %>% .$genes
+
+if (data_tag == "ecoli_full") {
+  fig_ant_cor <- exp_gr_df %>% 
+    ggplot(aes(x = b4658_2, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "b4658_2")
+  
+  fig_pos_cor <- exp_gr_df %>% 
+    ggplot(aes(x = b2780, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "b2780")
+} else if (data_tag == "ecoli_sparse") {
+  fig_ant_cor <- exp_gr_df %>% 
+    ggplot(aes(x = b3586, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "b3586")
+  
+  fig_pos_cor <- exp_gr_df %>% 
+    ggplot(aes(x = b0170, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "b0170")
+} else if (data_tag == "ecoli_prot") {
+  fig_ant_cor <- exp_gr_df %>% 
+    ggplot(aes(x = livJ, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "livJ")
+  
+  fig_pos_cor <- exp_gr_df %>% 
+    ggplot(aes(x = kbl, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "kbl")
+} else if (data_tag == "scer_rna") {
+  fig_ant_cor <- exp_gr_df %>% 
+    ggplot(aes(x = INM2, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "INM2")
+  
+  fig_pos_cor <- exp_gr_df %>% 
+    ggplot(aes(x = GLN4, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "GLN4")
+} else {
+  fig_ant_cor <- exp_gr_df %>% 
+    ggplot(aes(x = URA10, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "URA10")
+  
+  fig_pos_cor <- exp_gr_df %>% 
+    ggplot(aes(x = RPS9A, y = `Growth Rate (1/hr)`)) +
+      geom_point(alpha = 0.75) +
+      scale_x_continuous("Expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = "RPS9A")
+}
+
+fig_perm <- perm_df %>% 
+  ggplot() +
+    aes(x = pearsons, fill = set) +
+    geom_histogram(alpha = 0.5) +
+    scale_x_continuous(name = "Pearson's r") +
+    scale_y_continuous(name = "Counts") +
+    scale_fill_discrete(labels = c("True data", "Shuffled data")) +
+    theme_minimal_grid() +
+    theme(legend.position = "top")
+
+
 
 ```
+
+
+## Figure 4:
+```{r, include=FALSE, eval=FALSE}
+
+fig_4 <- plot_grid(
+  fig_ant_cor, fig_pos_cor, fig_perm,
+  nrow = 1,
+  labels = "AUTO"
+) + 
+  theme(plot.background = element_rect(fill="white", color = NA))
+
+save_plot(
+  file.path(
+    path_to_figures, 
+    'mackenzie', 
+    glue('fig_gene_con_{data_tag}.png')   # file name
+  ),
+  fig_4, 
+  ncol = 1, 
+  nrow = 1, 
+  base_height = 6.71, #base_height = 5.71,
+  base_asp = 1.618, 
+  base_width = NULL
+)
+
+```
+
 
