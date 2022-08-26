@@ -16,6 +16,7 @@ library(glue)
 library(viridis)
 library(cowplot)
 library(ggtext)
+library(broom)
 
 ```
 
@@ -66,7 +67,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "scer_prot" 
+data_tag <- "ecoli_full" 
 metric <- "CAI"
 
 ```
@@ -332,11 +333,325 @@ rm(fig_corr_max, fig_corr_min, fig_corr_grow, fig_gr_hist,
 ```
 
 
+
 ## Regression analysis to assess predictors of CUB
 
-```{r}
+```{r, message=FALSE}
+
+# model with average expression
+# use scale() for z score
+lm_exp <- lm(scale(CAI) ~ scale(mean), data = full_df)
+glance(lm_exp)
+tidy(lm_exp)
 
 ```
+
+```{r, message=FALSE}
+
+# model with growth correlation
+# use scale() for z score
+lm_gai <- lm(scale(CAI) ~ scale(lin_r), data = full_df)
+glance(lm_gai)
+tidy(lm_gai)
+
+```
+
+```{r, message=FALSE}
+
+# model with average expression and gai
+# use scale() for z score
+lm_exp_gai <- lm(scale(CAI) ~ scale(mean) + scale(lin_r), data = full_df)
+glance(lm_exp_gai)
+tidy(lm_exp_gai)
+
+```
+
+
+```{r, message=FALSE}
+
+model_df <- tibble(
+  model = c(
+    "expression", 
+    "gai", 
+    "expression_gai", 
+    "expression_gai"
+  ),
+  parameter = c(
+    "avg exp",
+    "gai",
+    "avg exp",
+    "gai"
+  ),
+  estimate = c(
+    lm_exp$coefficients[[2]],
+    lm_gai$coefficients[[2]],
+    lm_exp_gai$coefficients[[2]],
+    lm_exp_gai$coefficients[[3]]
+  ),
+  std_err = c(
+    tidy(lm_exp)$std.error[2],
+    tidy(lm_gai)$std.error[2],
+    tidy(lm_exp_gai)$std.error[2],
+    tidy(lm_exp_gai)$std.error[3]
+  ),
+  adj_r2 = c(
+    glance(lm_exp)$adj.r.squared,
+    glance(lm_gai)$adj.r.squared,
+    glance(lm_exp_gai)$adj.r.squared,
+    glance(lm_exp_gai)$adj.r.squared
+  )
+)
+
+library(ggdist)
+library(distributional)
+
+fig_m1 <- model_df %>% 
+  filter(model == "expression") %>% 
+  ggplot(aes(estimate, parameter)) +
+  stat_dist_halfeye(
+    aes(dist = dist_normal(
+      mu = estimate, sigma = std_err
+    )),
+    point_size = 4
+  ) +
+  scale_x_continuous(limits = c(.2, .6)) +
+  scale_y_discrete(labels = c("Expression")) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text.x = element_blank()
+  )
+
+fig_m2 <- model_df %>% 
+  filter(model == "gai") %>% 
+  ggplot(aes(estimate, parameter)) +
+  stat_dist_halfeye(
+    aes(dist = dist_normal(
+      mu = estimate, sigma = std_err
+    )),
+    point_size = 4
+  ) +
+  scale_x_continuous(limits = c(.2, .6)) +
+  scale_y_discrete(labels = c("GCI")) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text.x = element_blank()
+  )
+
+fig_m3 <- model_df %>% 
+  filter(model == "expression_gai") %>% 
+  ggplot(aes(estimate, parameter)) +
+  stat_dist_halfeye(
+    aes(dist = dist_normal(
+      mu = estimate, sigma = std_err
+    )),
+    point_size = 4
+  ) +
+  scale_x_continuous(
+    limits = c(.2, .6), 
+    name = "Standardized model coefficient"
+  ) +
+  scale_y_discrete(labels = c("Expression", "GCI")) +
+  theme_minimal() +
+  theme(axis.title.y = element_blank())
+
+fig_5a1 <- plot_grid(
+  fig_m1, fig_m2, fig_m3,
+  nrow = 3,
+  rel_heights = c(1, 1, 2),
+  align = "v"
+)
+
+rm(fig_m1, fig_m2, fig_m3)
+
+fig_r1 <- model_df %>% 
+  filter(model == "expression") %>% 
+  ggplot(aes(adj_r2, parameter)) +
+  geom_col() +
+  scale_x_continuous(limits = c(0, .4)) +
+  scale_y_discrete(labels = c("Expression")) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+fig_r2 <- model_df %>% 
+  filter(model == "gai") %>% 
+  ggplot(aes(adj_r2, parameter)) +
+  geom_col() +
+  scale_x_continuous(limits = c(0, .4)) +
+  scale_y_discrete(labels = c("GCI")) +
+  theme_minimal() +
+  theme(
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+fig_r3 <- model_df %>% 
+  filter(
+    model == "expression_gai" & parameter == "gai"
+  ) %>% 
+  ggplot(aes(adj_r2, parameter)) +
+  geom_col() +
+  scale_x_continuous(
+    limits = c(0, .4), 
+    name = "Adjusted R^2"
+  ) +
+  scale_y_discrete(labels = c("Expression + GCI")) +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+fig_5a2 <- plot_grid(
+  fig_r1, fig_r2, fig_r3,
+  nrow = 3,
+  rel_heights = c(1, 1, 2),
+  align = "v"
+)
+
+rm(fig_r1, fig_r2, fig_r3)
+
+fig_5a <- plot_grid(
+  fig_5a1, fig_5a2,
+  nrow = 1
+)
+
+fig_5a
+
+rm(fig_5a1, fig_5a2, model_df)
+
+```
+
+```{r, message=FALSE}
+
+r2_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(glance(lm_exp_gai)$adj.r.squared, 3)}'),
+  x = 4, 
+  y = -.75
+)
+
+fig_5b <- tibble(
+  measured = scale(full_df$CAI),
+  predicted = lm_exp_gai$fitted.values
+) %>% 
+  ggplot(aes(measured, predicted)) +
+  geom_point(alpha = 0.2) +
+  scale_x_continuous(
+    #limits = c(0, 1),
+    name = "CAI (Z-score)"
+  ) +
+  scale_y_continuous(
+    #limits = c(),
+    name = "Multivariate model predictions"
+  ) +
+  geom_richtext(
+    data = r2_text,
+    aes(x = x, y = y,label = label),
+    label.color = NA,
+    inherit.aes = FALSE
+  ) +
+  theme_half_open() +
+  background_grid() +
+  coord_flip()
+
+fig_5b
+
+```
+
+
+```{r, message=FALSE}
+
+lm_inter <- lm(
+  CAI ~ mean + lin_r + mean*lin_r, 
+  data = full_df
+)
+glance(lm_inter)
+tidy(lm_inter)
+
+coff <- lm_inter$coefficients
+
+gci_models <- tibble(
+  x_g = seq(
+    from = max(full_df$mean), 
+    to = min(full_df$mean), 
+    length.out = 3847
+  ),
+  g1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*1 + coff[[4]]*x_g*1,
+  g2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.66 + coff[[4]]*x_g*.66,
+  g3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.33 + coff[[4]]*x_g*.33,
+  g0 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*0 + coff[[4]]*x_g*0,
+  g_3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.33 + coff[[4]]*x_g*-.33,
+  g_2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.66 + coff[[4]]*x_g*-.66,
+  g_1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-1 + coff[[4]]*x_g*-1
+)
+
+r2_int_text <- data.frame(
+  label = glue(
+    '*R*<sup>2</sup> = {round(glance(lm_inter)$adj.r.squared, 3)}'),
+  x = 2, 
+  y = .8
+)
+
+fig_5c <- tibble(
+  CAI = full_df$CAI,
+  express = full_df$mean
+) %>% 
+  ggplot() +
+  geom_point(aes(express, CAI), alpha = 0.2) +
+  geom_line(data = gci_models, aes(x_g, g1), color = "#E69F00", size = 1) +
+  geom_line(data = gci_models, aes(x_g, g2), color = "#56B4E9", size = 1) +
+  geom_line(data = gci_models, aes(x_g, g3), color = "#009E73", size = 1) +
+  geom_line(data = gci_models, aes(x_g, g0), color = "#F0E442", size = 1) +
+  geom_line(data = gci_models, aes(x_g, g_1), color = "#0072B2", size = 1) +
+  geom_line(data = gci_models, aes(x_g, g_2), color = "#D55E00", size = 1) +
+  geom_line(data = gci_models, aes(x_g, g_3), color = "#CC79A7", size = 1) +
+  geom_richtext(
+    data = r2_int_text,
+    aes(x = x, y = y,label = label),
+    label.color = NA,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(name = "Expression (mean, log TPM)") +
+  theme_half_open() +
+  background_grid() 
+
+fig_5c
+
+```
+
+```{r, message=FALSE}
+
+library(patchwork)
+fig_5 <- fig_5a / (fig_5b | fig_5c) +
+  plot_annotation(
+     tag_levels = "A"
+   )
+
+fig_5
+
+save_plot(
+  file.path(
+    path_to_figures, 
+    'mackenzie', 
+    glue('fig_{metric}_gci_model_{data_tag}.png')   # file name
+  ),
+  fig_5, 
+  ncol = 1, 
+  nrow = 1, 
+  base_height = 6.71, #base_height = 5.71,
+  base_asp = 1.618, 
+  base_width = NULL
+)
+
+```
+
 
 
 ## Robustness check
