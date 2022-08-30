@@ -339,9 +339,9 @@ rm(max_cond_corr_df, min_cond_corr_df,
 ```
 
 
-#### Gene expression vs various dispersion metrics
+#### Gene expression vs various dispersion metrics - not included
 
-```{r, message=FALSE}
+```{r, include=FALSE, eval=FALSE}
 
 # calculate mean expression and dispersion metrics
 if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
@@ -379,7 +379,7 @@ exp_metrics %>%
 
 ```
 
-```{r, message=FALSE}
+```{r, include=FALSE, eval=FALSE}
 
 # visualize expression vs coeff of var
 exp_metrics %>% 
@@ -478,8 +478,8 @@ perm_df <- tibble(
 ) %>%
   gather(., "set", "pearsons")
 
-exp_gr_corr%>% filter(pearsons == max(pearsons)) %>% .$genes
-exp_gr_corr%>% filter(pearsons == min(pearsons)) %>% .$genes
+exp_gr_corr %>% filter(pearsons == max(pearsons)) %>% .$genes
+exp_gr_corr %>% filter(pearsons == min(pearsons)) %>% .$genes
 
 make_cor_plot <- function(x) {
   x <- enquo(x)
@@ -555,6 +555,34 @@ save_plot(
   base_height = 6.71, #base_height = 5.71,
   base_asp = 1.618, 
   base_width = NULL
+)
+
+```
+
+
+## Save gene GCI data for use in GO analysis
+```{r, message=FALSE, eval=FALSE}
+
+genes_positive <- exp_gr_corr %>% 
+  filter(pearsons > 0) %>% 
+  select(genes, pearsons)
+
+colnames(genes_positive) <- c("gene_name", "GCI")
+
+genes_negative <- exp_gr_corr %>% 
+  filter(pearsons < 0) %>% 
+  select(genes, pearsons)
+
+colnames(genes_negative) <- c("gene_name", "GCI")
+
+write_csv(
+  genes_positive, 
+  glue('{data_tag}_pos_corr.csv')
+)
+
+write_csv(
+  genes_negative, 
+  glue('{data_tag}_neg_corr.csv')
 )
 
 ```
