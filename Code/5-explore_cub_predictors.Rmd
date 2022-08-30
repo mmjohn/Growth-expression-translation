@@ -67,7 +67,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "ecoli_full" 
+data_tag <- "scer_rna" 
 metric <- "CAI"
 
 ```

@@ -25,7 +25,7 @@ library(ggtext)
 
 ```{r, message=FALSE}
 
-path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/processed_data/'
+path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/'
 path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Manuscript/Figures'
 
 data_key <- tibble(
@@ -37,30 +37,37 @@ data_key <- tibble(
     'scer_prot'
   ),
   meta_file = c(
-    glue({path_to_data}, 'processed_metadata_ecoli.tsv'),
-    glue({path_to_data}, 'processed_metadata_ecoli_SPARSE.tsv'),
-    glue({path_to_data}, 'processed_metadata_ecoli_PROTEIN.tsv'),
-    glue({path_to_data}, 'processed_metadata_scer_RNA.tsv'),
-    glue({path_to_data}, 'processed_metadata_scer_PROTEIN.tsv')
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_metadata_scer_PROTEIN.tsv')
   ),
   expression_file = c(
-    glue({path_to_data}, 'processed_expression_ecoli.tsv'),
-    glue({path_to_data}, 'processed_expression_ecoli_SPARSE.tsv'),
-    glue({path_to_data}, 'processed_expression_ecoli_PROTEIN.tsv'),
-    glue({path_to_data}, 'processed_expression_scer_RNA.tsv'),
-    glue({path_to_data}, 'processed_expression_scer_PROTEIN.tsv')
+    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_scer_PROTEIN.tsv')
   ),
   summary_file = c(
-    glue({path_to_data}, 'processed_expression_summary_ecoli.tsv'),
-    glue({path_to_data}, 'processed_expression_summary_ecoli_SPARSE.tsv'),
-    glue({path_to_data}, 'processed_expression_summary_ecoli_PROTEIN.tsv'),
-    glue({path_to_data}, 'processed_expression_summary_scer_RNA.tsv'),
-    glue({path_to_data}, 'processed_expression_summary_scer_PROTEIN.tsv')
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli_PROTEIN.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_scer_RNA.tsv'),
+    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_scer_PROTEIN.tsv')
+  ),
+  cub_file = c(
+    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
+    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
+    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
+    glue({path_to_data}, 'scer_info/', 'current_scer_master_table.tsv'),
+    glue({path_to_data}, 'scer_info/', 'current_scer_master_table.tsv')
   )
 )
 
 # select dataset for analysis
-data_tag <- "scer_prot" 
+data_tag <- "scer_rna" 
 
 ```
 
@@ -79,6 +86,9 @@ meta_df <- read_tsv(analysis_files$meta_file)
 exp_df <- read_tsv(analysis_files$expression_file)
 
 exp_sum_df <- read_tsv(analysis_files$summary_file)
+
+full_df <- read_tsv(analysis_files$cub_file) %>% 
+  select(locus_tag, gene)
 
 ```
 
@@ -563,26 +573,47 @@ save_plot(
 ## Save gene GCI data for use in GO analysis
 ```{r, message=FALSE, eval=FALSE}
 
-genes_positive <- exp_gr_corr %>% 
-  filter(pearsons > 0) %>% 
-  select(genes, pearsons)
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+  
+  genes_positive <- exp_gr_corr %>% 
+    filter(pearsons > 0) %>% 
+    select(genes, pearsons) %>% 
+    left_join(., full_df, by = c("genes" = "locus_tag"))
+  colnames(genes_positive) <- c("locus_tag", "GCI", "gene_name")
 
-colnames(genes_positive) <- c("gene_name", "GCI")
+  genes_negative <- exp_gr_corr %>% 
+    filter(pearsons < 0) %>% 
+    select(genes, pearsons) %>% 
+    left_join(., full_df, by = c("genes" = "locus_tag"))
+  colnames(genes_negative) <- c("locus_tag", "GCI", "gene_name")
+  
+} else {
+  
+  genes_positive <- exp_gr_corr %>% 
+    filter(pearsons > 0) %>% 
+    select(pearsons, genes) %>% 
+    filter(genes != "2020-10-01 00:00:00")
+  colnames(genes_positive) <- c("GCI", "gene_name")
+  
+  genes_negative <- exp_gr_corr %>% 
+    filter(pearsons < 0) %>% 
+    select(pearsons, genes) %>% 
+    filter(genes != "2020-10-01 00:00:00")
+  colnames(genes_negative) <- c("GCI", "gene_name")
+  
+}
 
-genes_negative <- exp_gr_corr %>% 
-  filter(pearsons < 0) %>% 
-  select(genes, pearsons)
-
-colnames(genes_negative) <- c("gene_name", "GCI")
 
 write_csv(
   genes_positive, 
-  glue('{data_tag}_pos_corr.csv')
+  glue('{data_tag}_pos_corr.csv'),
+  append = FALSE
 )
 
 write_csv(
   genes_negative, 
-  glue('{data_tag}_neg_corr.csv')
+  glue('{data_tag}_neg_corr.csv'),
+  append = FALSE
 )
 
 ```
