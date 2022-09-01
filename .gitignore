@@ -2,3 +2,4 @@
 .DS_Store
 Code/__pycache__/*
 Data/ecoli_info/evolutionary_analysis/*
+Code/.Rhistory
