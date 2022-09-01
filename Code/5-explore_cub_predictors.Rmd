@@ -17,6 +17,9 @@ library(viridis)
 library(cowplot)
 library(ggtext)
 library(broom)
+library(ggdist)
+library(distributional)
+library(patchwork)
 
 ```
 
@@ -67,8 +70,8 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "scer_rna" 
-metric <- "CAI"
+data_tag <- "ecoli_full" 
+metric <- "CAI" 
 
 ```
 
@@ -96,6 +99,9 @@ exp_df <- read_tsv(analysis_files$expression_file)
 
 # expression sumary statistics calculated from the condition-specific expression matrices
 exp_sum_df <- read_tsv(analysis_files$summary_file)
+
+# core v accessory info
+
 
 ```
 
@@ -126,13 +132,13 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
 
 ```{r, message=FALSE}
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag == "ecoli_full") {
   # get df
   corr_df <- full_df %>% 
     select(locus_tag, CAI) %>% 
     left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
   # correlations
-  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:32], method = "pearson") %>% #3:105 for full
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:105], method = "pearson") %>% 
     as_tibble() %>% 
     gather(
       .,
@@ -140,7 +146,21 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
       value = "pearsons"
     ) %>% 
     mutate(r2 = pearsons^2)
-} else if (data_tag == "ecoli_prot") {
+} else if (data_tag == "ecoli_sparse") {
+  # get df
+  corr_df <- full_df %>% 
+    select(locus_tag, CAI) %>% 
+    left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:32], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+}  else if (data_tag == "ecoli_prot") {
   # get df
   corr_df <- full_df %>% 
     select(gene, CAI) %>% 
@@ -271,6 +291,121 @@ fig_corr_grow <- meta_df %>%
 
 ```
 
+
+```{r, include=FALSE, eval=FALSE}
+# tAI version
+
+if (metric == "tAI") {
+  # get df
+  corr_df <- full_df %>% 
+    select(locus_tag, tAI) %>% 
+    left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$tAI, corr_df[3:105], method = "pearson") %>% #3:105 for full
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+  
+  min_corr <- exp_cub_corr %>% 
+    filter(r2 == min(r2))
+  max_corr <- exp_cub_corr %>% 
+    filter(r2 == max(r2))
+  
+  fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `cra_crp__delcra_ac`, y = tAI) +    
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `glu__glu_ale5`, y = tAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_grow <- meta_df %>% 
+    select(Simple_sample_id, `Growth Rate (1/hr)`) %>% 
+    inner_join(., exp_cub_corr, by = c("Simple_sample_id" = "condition")) %>% 
+    ggplot() +
+      aes(x = `Growth Rate (1/hr)`, y = r2) +
+      geom_point(size = 2, alpha = 0.75) +
+      scale_y_continuous(name = '*R*<sup>2</sup> (tAI vs expression)') +
+      theme_minimal_grid() +
+      theme(axis.title.y = element_markdown())
+  
+} 
+
+
+# ROC-SEMPPR version
+
+if (metric == "roc_semppr_mean") {
+  # get df
+  corr_df <- full_df %>% 
+    select(locus_tag, roc_semppr_mean) %>% 
+    drop_na(roc_semppr_mean) %>% 
+    left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$roc_semppr_mean, corr_df[3:105], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+  
+  min_corr <- exp_cub_corr %>% 
+    filter(r2 == min(r2))
+  max_corr <- exp_cub_corr %>% 
+    filter(r2 == max(r2))
+  
+  fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `fps__fps_serB_ale4`, y = roc_semppr_mean) +    
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression (log TPM)") +
+      scale_y_continuous(name = "ROC-SEMPPR") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `glu__glu_ale5`, y = roc_semppr_mean) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression (log TPM)") +
+      scale_y_continuous(name = "ROC-SEMPPR") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_grow <- meta_df %>% 
+    select(Simple_sample_id, `Growth Rate (1/hr)`) %>% 
+    inner_join(., exp_cub_corr, by = c("Simple_sample_id" = "condition")) %>% 
+    ggplot() +
+      aes(x = `Growth Rate (1/hr)`, y = r2) +
+      geom_point(size = 2, alpha = 0.75) +
+      scale_y_continuous(name = '*R*<sup>2</sup> (metric vs expression)') +
+      theme_minimal_grid() +
+      theme(axis.title.y = element_markdown())
+  
+} 
+
+
+```
+
+
+
 ## Growth rate data
 
 ```{r, message=FALSE}
@@ -291,7 +426,7 @@ fig_gr_hist <- meta_df %>%
 ```
 
 
-# Figure 3
+## Figure 3
 ```{r, message=FALSE}
 
 fig_3 <- plot_grid(
@@ -303,10 +438,13 @@ fig_3 <- plot_grid(
 
 fig_3
 
+```
+
+```{r, include=FALSE, eval=FALSE}
+
 save_plot(
   file.path(
     path_to_figures, 
-    'mackenzie', 
     glue('fig_{metric}_exp_gr_{data_tag}.png')   # file name
   ),
   fig_3, 
@@ -317,8 +455,7 @@ save_plot(
 
 ```
 
-Clean up
-```{r, message=FALSE}
+```{r, message=FALSE, include=FALSE}
 
 rm(fig_corr_max, fig_corr_min, fig_corr_grow, fig_gr_hist,
    min_corr, max_corr)
@@ -326,41 +463,34 @@ rm(fig_corr_max, fig_corr_min, fig_corr_grow, fig_gr_hist,
 ```
 
 
-## Determine which expression-based summary statistics are most correlated with CUB metrics
-
-```{r}
-
-```
-
-
-
 ## Regression analysis to assess predictors of CUB
 
 ```{r, message=FALSE}
 
 # model with average expression
-# use scale() for z score
-lm_exp <- lm(scale(CAI) ~ scale(mean), data = full_df)
+# use scale() for z score - NOT CURRENTLY USING
+lm_exp <- lm(CAI ~ mean, data = full_df)
 glance(lm_exp)
 tidy(lm_exp)
 
 ```
 
+
 ```{r, message=FALSE}
 
 # model with growth correlation
-# use scale() for z score
-lm_gai <- lm(scale(CAI) ~ scale(lin_r), data = full_df)
+lm_gai <- lm(CAI ~ lin_r, data = full_df)
 glance(lm_gai)
 tidy(lm_gai)
 
 ```
 
+
 ```{r, message=FALSE}
 
 # model with average expression and gai
 # use scale() for z score
-lm_exp_gai <- lm(scale(CAI) ~ scale(mean) + scale(lin_r), data = full_df)
+lm_exp_gai <- lm(CAI ~ mean + lin_r, data = full_df)
 glance(lm_exp_gai)
 tidy(lm_exp_gai)
 
@@ -402,9 +532,6 @@ model_df <- tibble(
   )
 )
 
-library(ggdist)
-library(distributional)
-
 fig_m1 <- model_df %>% 
   filter(model == "expression") %>% 
   ggplot(aes(estimate, parameter)) +
@@ -414,12 +541,13 @@ fig_m1 <- model_df %>%
     )),
     point_size = 4
   ) +
-  scale_x_continuous(limits = c(.2, .6)) +
+  #scale_x_continuous(limits = c(.2, .6)) +
+  scale_x_continuous(limits = c(0, .2)) +
   scale_y_discrete(labels = c("Expression")) +
   theme_minimal() +
   theme(
     axis.title = element_blank(),
-    axis.text.x = element_blank()
+  #  axis.text.x = element_blank()
   )
 
 fig_m2 <- model_df %>% 
@@ -431,12 +559,13 @@ fig_m2 <- model_df %>%
     )),
     point_size = 4
   ) +
-  scale_x_continuous(limits = c(.2, .6)) +
+  #scale_x_continuous(limits = c(.2, .6)) +
+  scale_x_continuous(limits = c(0, .2)) +
   scale_y_discrete(labels = c("GCI")) +
   theme_minimal() +
   theme(
     axis.title = element_blank(),
-    axis.text.x = element_blank()
+  #  axis.text.x = element_blank()
   )
 
 fig_m3 <- model_df %>% 
@@ -449,14 +578,15 @@ fig_m3 <- model_df %>%
     point_size = 4
   ) +
   scale_x_continuous(
-    limits = c(.2, .6), 
+  #  limits = c(.2, .6), 
+    limits = c(0, .2),
     name = "Standardized model coefficient"
   ) +
   scale_y_discrete(labels = c("Expression", "GCI")) +
   theme_minimal() +
   theme(axis.title.y = element_blank())
 
-fig_5a1 <- plot_grid(
+fig_5a <- plot_grid(
   fig_m1, fig_m2, fig_m3,
   nrow = 3,
   rel_heights = c(1, 1, 2),
@@ -465,117 +595,65 @@ fig_5a1 <- plot_grid(
 
 rm(fig_m1, fig_m2, fig_m3)
 
-fig_r1 <- model_df %>% 
-  filter(model == "expression") %>% 
-  ggplot(aes(adj_r2, parameter)) +
-  geom_col() +
-  scale_x_continuous(limits = c(0, .4)) +
-  scale_y_discrete(labels = c("Expression")) +
-  theme_minimal() +
-  theme(
-    axis.title = element_blank(),
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank()
-  )
-
-fig_r2 <- model_df %>% 
-  filter(model == "gai") %>% 
-  ggplot(aes(adj_r2, parameter)) +
-  geom_col() +
-  scale_x_continuous(limits = c(0, .4)) +
-  scale_y_discrete(labels = c("GCI")) +
-  theme_minimal() +
-  theme(
-    axis.title = element_blank(),
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank()
-  )
-
-fig_r3 <- model_df %>% 
-  filter(
-    model == "expression_gai" & parameter == "gai"
-  ) %>% 
-  ggplot(aes(adj_r2, parameter)) +
+fig_5b <- model_df %>% 
+  slice(., 1:3) %>%
+  ggplot(
+    aes(
+      adj_r2,
+      fct_relevel(model, "expression_gai", "gai", "expression")
+    )
+  ) +
   geom_col() +
   scale_x_continuous(
-    limits = c(0, .4), 
-    name = "Adjusted R^2"
+    name = "Adjusted *R*<sup>2</sup>",
+    limits = c(0, .4)
   ) +
-  scale_y_discrete(labels = c("Expression + GCI")) +
+  scale_y_discrete(labels = c("Both", "GCI", "Expression")) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
-    axis.text.y = element_blank()
+    axis.title.x = element_markdown()
   )
 
-fig_5a2 <- plot_grid(
-  fig_r1, fig_r2, fig_r3,
-  nrow = 3,
-  rel_heights = c(1, 1, 2),
-  align = "v"
-)
-
-rm(fig_r1, fig_r2, fig_r3)
-
-fig_5a <- plot_grid(
-  fig_5a1, fig_5a2,
-  nrow = 1
-)
-
-fig_5a
-
-rm(fig_5a1, fig_5a2, model_df)
 
 ```
 
+
 ```{r, message=FALSE}
 
-r2_text <- data.frame(
-  label = glue(
-    '*R*<sup>2</sup> = {round(glance(lm_exp_gai)$adj.r.squared, 3)}'),
-  x = 4, 
-  y = -.75
-)
-
-fig_5b <- tibble(
-  measured = scale(full_df$CAI),
+fig_5c <- tibble(
+  measured = full_df$CAI,
   predicted = lm_exp_gai$fitted.values
 ) %>% 
   ggplot(aes(measured, predicted)) +
   geom_point(alpha = 0.2) +
   scale_x_continuous(
     #limits = c(0, 1),
-    name = "CAI (Z-score)"
+    name = "CAI"
   ) +
   scale_y_continuous(
     #limits = c(),
     name = "Multivariate model predictions"
   ) +
-  geom_richtext(
-    data = r2_text,
-    aes(x = x, y = y,label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
   theme_half_open() +
   background_grid() +
   coord_flip()
 
-fig_5b
+fig_5c
 
 ```
 
 
 ```{r, message=FALSE}
 
-lm_inter <- lm(
-  CAI ~ mean + lin_r + mean*lin_r, 
-  data = full_df
-)
-glance(lm_inter)
-tidy(lm_inter)
+# lm_inter <- lm(
+#   CAI ~ mean + lin_r + mean*lin_r, 
+#   data = full_df
+# )
+# glance(lm_inter)
+# tidy(lm_inter)
 
-coff <- lm_inter$coefficients
+coff <- lm_exp_gai$coefficients
 
 gci_models <- tibble(
   x_g = seq(
@@ -583,23 +661,23 @@ gci_models <- tibble(
     to = min(full_df$mean), 
     length.out = 3847
   ),
-  g1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*1 + coff[[4]]*x_g*1,
-  g2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.66 + coff[[4]]*x_g*.66,
-  g3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.33 + coff[[4]]*x_g*.33,
-  g0 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*0 + coff[[4]]*x_g*0,
-  g_3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.33 + coff[[4]]*x_g*-.33,
-  g_2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.66 + coff[[4]]*x_g*-.66,
-  g_1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-1 + coff[[4]]*x_g*-1
+  g1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*1,
+  g2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.66,
+  g3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.33,
+  g0 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*0,
+  g_3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.33,
+  g_2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.66,
+  g_1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-1
 )
 
 r2_int_text <- data.frame(
   label = glue(
-    '*R*<sup>2</sup> = {round(glance(lm_inter)$adj.r.squared, 3)}'),
+    '*R*<sup>2</sup> = {round(glance(lm_exp_gai)$adj.r.squared, 3)}'),
   x = 2, 
   y = .8
 )
 
-fig_5c <- tibble(
+fig_5d <- tibble(
   CAI = full_df$CAI,
   express = full_df$mean
 ) %>% 
@@ -622,24 +700,25 @@ fig_5c <- tibble(
   theme_half_open() +
   background_grid() 
 
-fig_5c
+fig_5d
 
 ```
 
+
 ```{r, message=FALSE}
 
-library(patchwork)
 fig_5 <- fig_5a / (fig_5b | fig_5c) +
   plot_annotation(
      tag_levels = "A"
    )
 
 fig_5
+```
 
+```{r, include=FALSE, eval=FALSE}
 save_plot(
   file.path(
     path_to_figures, 
-    'mackenzie', 
     glue('fig_{metric}_gci_model_{data_tag}.png')   # file name
   ),
   fig_5, 
@@ -649,49 +728,6 @@ save_plot(
   base_asp = 1.618, 
   base_width = NULL
 )
-
-```
-
-
-
-## Robustness check
-
-```{r}
-
-```
-
-
-## Visualizing various mult-variation models for robustness
-
-```{r}
-
-```
-
-
-## Finally, some mixed linear models
-
-#### Linear model with a fixed slope and random intercept
-
-```{r}
-
-```
-
-
-#### Linear model with random slope and fixed intercept
-
-```{r}
-
-```
-
-#### Linear model with random effect slope AND random intercept
-
-```{r}
-
-```
-
-#### Exponential with random slopes and random intercepts
-
-```{r}
 
 ```
 
