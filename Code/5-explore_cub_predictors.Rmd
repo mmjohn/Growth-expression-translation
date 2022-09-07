@@ -70,7 +70,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "scer_prot" 
+data_tag <- "ecoli_full" 
 metric <- "CAI" 
 
 ```
@@ -99,8 +99,6 @@ exp_df <- read_tsv(analysis_files$expression_file)
 
 # expression sumary statistics calculated from the condition-specific expression matrices
 exp_sum_df <- read_tsv(analysis_files$summary_file)
-
-# core v accessory info
 
 
 ```
@@ -479,256 +477,259 @@ tidy(lm_exp)
 ```{r, message=FALSE}
 
 # model with growth correlation
-lm_gai <- lm(CAI ~ lin_r, data = full_df)
-glance(lm_gai)
-tidy(lm_gai)
+lm_gci <- lm(CAI ~ lin_r, data = full_df)
+glance(lm_gci)
+tidy(lm_gci)
 
 ```
 
 
 ```{r, message=FALSE}
 
-# model with average expression and gai
-lm_exp_gai <- lm(CAI ~ mean + lin_r, data = full_df)
-glance(lm_exp_gai)
-tidy(lm_exp_gai)
+# model with average expression and gci
+lm_exp_gci <- lm(CAI ~ mean + lin_r, data = full_df)
+glance(lm_exp_gci)
+tidy(lm_exp_gci)
 
 ```
 
 
 ```{r, message=FALSE}
 
-model_df <- tibble(
+# model with average expression and gci with interaction
+lm_inter <- lm(CAI ~ mean + lin_r + mean*lin_r, data = full_df)
+glance(lm_inter)
+tidy(lm_inter)
+
+```
+
+
+```{r, message=FALSE}
+
+fig_5a <- tibble(
   model = c(
-    "expression", 
-    "gai", 
-    "expression_gai", 
-    "expression_gai"
-  ),
-  parameter = c(
-    "avg exp",
-    "gai",
-    "avg exp",
-    "gai"
-  ),
-  estimate = c(
-    lm_exp$coefficients[[2]],
-    lm_gai$coefficients[[2]],
-    lm_exp_gai$coefficients[[2]],
-    lm_exp_gai$coefficients[[3]]
-  ),
-  std_err = c(
-    tidy(lm_exp)$std.error[2],
-    tidy(lm_gai)$std.error[2],
-    tidy(lm_exp_gai)$std.error[2],
-    tidy(lm_exp_gai)$std.error[3]
+    "expression",
+    "gci",
+    "both_add",
+    "both_inter"
   ),
   adj_r2 = c(
     glance(lm_exp)$adj.r.squared,
-    glance(lm_gai)$adj.r.squared,
-    glance(lm_exp_gai)$adj.r.squared,
-    glance(lm_exp_gai)$adj.r.squared
+    glance(lm_gci)$adj.r.squared,
+    glance(lm_exp_gci)$adj.r.squared,
+    glance(lm_inter)$adj.r.squared
   )
-)
-
-fig_m1 <- model_df %>% 
-  filter(model == "expression") %>% 
-  ggplot(aes(estimate, parameter)) +
-  stat_dist_halfeye(
-    aes(dist = dist_normal(
-      mu = estimate, sigma = std_err
-    )),
-    point_size = 4
-  ) +
-  #scale_x_continuous(limits = c(.2, .6)) +
-  scale_x_continuous(limits = c(0, .2)) +
-  scale_y_discrete(labels = c("Expression")) +
-  theme_minimal() +
-  theme(
-    axis.title = element_blank(),
-  #  axis.text.x = element_blank()
-  )
-
-fig_m2 <- model_df %>% 
-  filter(model == "gai") %>% 
-  ggplot(aes(estimate, parameter)) +
-  stat_dist_halfeye(
-    aes(dist = dist_normal(
-      mu = estimate, sigma = std_err
-    )),
-    point_size = 4
-  ) +
-  #scale_x_continuous(limits = c(.2, .6)) +
-  scale_x_continuous(limits = c(0, .2)) +
-  scale_y_discrete(labels = c("GCI")) +
-  theme_minimal() +
-  theme(
-    axis.title = element_blank(),
-  #  axis.text.x = element_blank()
-  )
-
-fig_m3 <- model_df %>% 
-  filter(model == "expression_gai") %>% 
-  ggplot(aes(estimate, parameter)) +
-  stat_dist_halfeye(
-    aes(dist = dist_normal(
-      mu = estimate, sigma = std_err
-    )),
-    point_size = 4
-  ) +
-  scale_x_continuous(
-  #  limits = c(.2, .6), 
-    limits = c(0, .2),
-    name = "Standardized model coefficient"
-  ) +
-  scale_y_discrete(labels = c("Expression", "GCI")) +
-  theme_minimal() +
-  theme(axis.title.y = element_blank())
-
-fig_5a <- plot_grid(
-  fig_m1, fig_m2, fig_m3,
-  nrow = 3,
-  rel_heights = c(1, 1, 2),
-  align = "v"
-)
-
-fig_5a
-
-rm(fig_m1, fig_m2, fig_m3)
-
-```
-
-```{r, message=FALSE}
-
-fig_5b <- model_df %>% 
-  slice(., 1:3) %>%
+) %>% 
   ggplot(
     aes(
       adj_r2,
-      fct_relevel(model, "expression_gai", "gai", "expression")
+      fct_relevel(model, "both_inter", "both_add", "gci", "expression")
     )
   ) +
   geom_col() +
   scale_x_continuous(
     name = "Adjusted *R*<sup>2</sup>",
-    limits = c(0, .45)
+    limits = c(0, .4)
   ) +
-  scale_y_discrete(labels = c("Both", "GCI", "Expression")) +
+  scale_y_discrete(
+    labels = c("Both with interaction", 
+               "Both (Expression & GCI)", "GCI", "Expression")
+  ) +
   theme_minimal() +
   theme(
     axis.title.y = element_blank(),
     axis.title.x = element_markdown()
   )
 
-fig_5b
+fig_5a
 
 ```
 
 
 ```{r, message=FALSE}
 
-fig_5c <- tibble(
-  measured = full_df$CAI,
-  predicted = lm_exp_gai$fitted.values
-) %>% 
-  ggplot(aes(measured, predicted)) +
-  geom_point(alpha = 0.2) +
-  scale_x_continuous(
-    #limits = c(0, 1),
-    name = "CAI"
-  ) +
-  scale_y_continuous(
-    #limits = c(),
-    name = "Multivariate model predictions"
-  ) +
-  theme_half_open() +
-  background_grid() +
-  coord_flip()
-
-fig_5c
-
-```
-
-
-```{r, message=FALSE}
-
-# lm_inter <- lm(
-#   CAI ~ mean + lin_r + mean*lin_r, 
-#   data = full_df
-# )
-# glance(lm_inter)
-# tidy(lm_inter)
-
-coff <- lm_exp_gai$coefficients
-
-gci_models <- tibble(
-  x_g = seq(
+# create model fits for range of expression and GCI values for use in plotting
+new_data <- expand_grid(
+  mean = seq(
     from = max(full_df$mean), 
     to = min(full_df$mean), 
-    length.out = 3847
+    length.out = 100
   ),
-  g1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*1,
-  g2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.66,
-  g3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*.33,
-  g0 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*0,
-  g_3 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.33,
-  g_2 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-.66,
-  g_1 = coff[[1]] + coff[[2]]*x_g + coff[[3]]*-1
-)
+  lin_r = seq(
+    from = 1, 
+    to = -1, 
+    length.out = 7)
+ )
 
-r2_int_text <- data.frame(
-  label = glue(
-    '*R*<sup>2</sup> = {round(glance(lm_exp_gai)$adj.r.squared, 3)}'),
-  x = -2, #2, 4, 
-  y = .8
-)
+gci_models <- new_data %>% 
+  mutate(
+    pred_cai_lm_exp = predict(lm_exp, new_data),
+    pred_cai_lm_both = predict(lm_exp_gci, new_data),
+    pred_cai_lm_inter = predict(lm_inter, new_data),
+    lin_r = factor(round(lin_r, 3))
+  )
 
-fig_5d <- tibble(
-  CAI = full_df$CAI,
-  express = full_df$mean
-) %>% 
-  ggplot() +
-  geom_point(aes(express, CAI), alpha = 0.2) +
-  geom_line(data = gci_models, aes(x_g, g1), color = "#14505C", size = 1) +
-  geom_line(data = gci_models, aes(x_g, g2), color = "#226B70", size = 1) +
-  geom_line(data = gci_models, aes(x_g, g3), color = "#348781", size = 1) +
-  geom_line(data = gci_models, aes(x_g, g0), color = "#4CA38F", size = 1) +
-  geom_line(data = gci_models, aes(x_g, g_1), color = "#6BBE99", size = 1) +
-  geom_line(data = gci_models, aes(x_g, g_2), color = "#9AD4A8", size = 1) +
-  geom_line(data = gci_models, aes(x_g, g_3), color = "#C7E5BE", size = 1) +
-  geom_richtext(
-    data = r2_int_text,
-    aes(x = x, y = y,label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
-  #scale_x_continuous(name = "Expression (mean, log TPM)") +
-  scale_x_continuous(name = "Expression (mean)") +
-  theme_half_open() +
-  background_grid() 
+# function to create plot 5b expression model
+plot_exp_lm <- function(r2_x, r2_y, x_lab) {
+  
+  # create label data set
+  r2_exp_text <- data.frame(
+    label = glue(
+    '*R*<sup>2</sup> = {round(glance(lm_exp)$adj.r.squared, 3)}'),
+    x = r2_x, 
+    y = r2_y
+  )
+  
+  # plot expression model
+  tibble(
+    CAI = full_df$CAI,
+    express = full_df$mean
+  ) %>% 
+    ggplot() +
+    geom_point(aes(express, CAI), alpha = 0.2) +
+    geom_line(
+      data = gci_models, 
+      aes(mean, pred_cai_lm_exp), 
+      color = "#CC4678FF", # use color of GCI=0 in other plots
+      size = 1
+    ) +
+    # geom_richtext(
+    #   data = r2_exp_text,
+    #   aes(x = x, y = y,label = label),
+    #   label.color = NA,
+    #   inherit.aes = FALSE
+    # ) +
+    scale_x_continuous(name = x_lab) +
+    scale_color_viridis_d(option = "C") +
+    theme_half_open() +
+    background_grid()
+  
+} 
 
-fig_5d
+# function to create plot 5c model with expression & gci (no interaction)
+plot_both_lm <- function(r2_x, r2_y, x_lab) {
+  
+  # create label data set
+  r2_both_text <- data.frame(
+    label = glue(
+    '*R*<sup>2</sup> = {round(glance(lm_exp_gci)$adj.r.squared, 3)}'),
+    x = r2_x, 
+    y = r2_y
+  )
+  
+  # plot additive model
+  tibble(
+    CAI = full_df$CAI,
+    express = full_df$mean
+  ) %>% 
+    ggplot() +
+    geom_point(aes(express, CAI), alpha = 0.2) +
+    geom_line(
+      data = gci_models, 
+      aes(mean, pred_cai_lm_both, color = fct_rev(lin_r)), 
+      size = 1
+    ) +
+    # geom_richtext(
+    #   data = r2_both_text,
+    #   aes(x = x, y = y,label = label),
+    #   label.color = NA,
+    #   inherit.aes = FALSE
+    # ) +
+    scale_x_continuous(name = x_lab) +
+    scale_color_viridis_d(
+      option = "C",
+      name = "GCI"
+    ) +
+    theme_half_open() +
+    background_grid() +
+    theme(legend.position = "none")
+
+}
+
+
+# function to create plot 5d model with expression & gci with interaction
+plot_inter_lm <- function(r2_x, r2_y, x_lab) {
+  
+  # create label data set
+  r2_inter_text <- data.frame(
+    label = glue(
+    '*R*<sup>2</sup> = {round(glance(lm_inter)$adj.r.squared, 3)}'),
+    x = r2_x, 
+    y = r2_y
+  )
+  
+  # plot additive model
+  tibble(
+    CAI = full_df$CAI,
+    express = full_df$mean
+  ) %>% 
+    ggplot() +
+    geom_point(aes(express, CAI), alpha = 0.2) +
+    geom_line(
+      data = gci_models, 
+      aes(mean, pred_cai_lm_inter, color = fct_rev(lin_r)), 
+      size = 1
+    ) +
+    # geom_richtext(
+    #   data = r2_inter_text,
+    #   aes(x = x, y = y,label = label),
+    #   label.color = NA,
+    #   inherit.aes = FALSE
+    # ) +
+    scale_x_continuous(name = x_lab) +
+    scale_color_viridis_d(
+      option = "C",
+      name = "GCI"
+    ) +
+    theme_half_open() +
+    background_grid() +
+    theme(legend.position = "none")
+
+}
+
+# set values specific to data sets for plots
+if (data_tag == "ecoli_full") {
+  x <- 2
+  y <- .8
+  lab <- "Expression (mean, log TPM)"
+}
+
+# create plots
+fig_5b <- plot_exp_lm(x, y, lab)
+
+fig_5c <- plot_both_lm(x, y, lab)
+
+fig_5d <- plot_inter_lm(x, y, lab)
 
 ```
 
 
 ```{r, message=FALSE}
 
-# fig_5 <- ( fig_5a | fig_5b ) / (fig_5c | fig_5d) +
-#   plot_annotation(
-#      tag_levels = "A"
-#    )
+# extract shared legend
+legend <- get_legend(
+  fig_5c + 
+    guides(color = guide_legend(nrow = 1)) +
+    theme(legend.position = "bottom")
+)
 
-fig_5 <- plot_grid(
+plots <- plot_grid(
   fig_5a, fig_5b, fig_5c, fig_5d,
   nrow = 2,
   labels = "AUTO"
+) 
+
+fig_5 <- plot_grid(
+  plots, legend,
+  nrow = 2,
+  rel_heights = c(1, .25)
 ) +
   theme(plot.background = element_rect(fill="white", color = NA))
 
 fig_5
 
 ```
+
 
 ```{r, include=FALSE, eval=FALSE}
 
