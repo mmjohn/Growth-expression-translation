@@ -71,7 +71,7 @@ data_key <- tibble(
 
 # select dataset for analysis
 data_tag <- "ecoli_full" 
-metric <- "CAI" 
+metric <- "tAI" #"CAI" 
 
 ```
 
@@ -532,10 +532,10 @@ fig_5a <- tibble(
     limits = c(0, .4)
   ) +
   scale_y_discrete(
-    labels = c("Both with interaction", 
-               "Both (Expression & GCI)", "GCI", "Expression")
+    labels = c("Both (interaction)", 
+               "Both", "GCI", "Expression")
   ) +
-  theme_minimal() +
+  theme_minimal(base_size = 14) +
   theme(
     axis.title.y = element_blank(),
     axis.title.x = element_markdown()
@@ -586,7 +586,7 @@ plot_exp_lm <- function(r2_x, r2_y, x_lab) {
     express = full_df$mean
   ) %>% 
     ggplot() +
-    geom_point(aes(express, CAI), alpha = 0.2) +
+    geom_point(aes(express, CAI), alpha = 0.1) +
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_exp), 
@@ -623,7 +623,7 @@ plot_both_lm <- function(r2_x, r2_y, x_lab) {
     express = full_df$mean
   ) %>% 
     ggplot() +
-    geom_point(aes(express, CAI), alpha = 0.2) +
+    geom_point(aes(express, CAI), alpha = 0.1) +
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_both, color = fct_rev(lin_r)), 
@@ -664,7 +664,7 @@ plot_inter_lm <- function(r2_x, r2_y, x_lab) {
     express = full_df$mean
   ) %>% 
     ggplot() +
-    geom_point(aes(express, CAI), alpha = 0.2) +
+    geom_point(aes(express, CAI), alpha = 0.1) +
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_inter, color = fct_rev(lin_r)), 
@@ -688,10 +688,14 @@ plot_inter_lm <- function(r2_x, r2_y, x_lab) {
 }
 
 # set values specific to data sets for plots
-if (data_tag == "ecoli_full") {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
   x <- 2
   y <- .8
   lab <- "Expression (mean, log TPM)"
+} else {
+  x <- 2
+  y <- .8
+  lab <- "Expression (mean)"
 }
 
 # create plots
@@ -703,7 +707,7 @@ fig_5d <- plot_inter_lm(x, y, lab)
 
 ```
 
-
+## Figure 5
 ```{r, message=FALSE}
 
 # extract shared legend
@@ -722,14 +726,13 @@ plots <- plot_grid(
 fig_5 <- plot_grid(
   plots, legend,
   nrow = 2,
-  rel_heights = c(1, .25)
+  rel_heights = c(1, .05)
 ) +
   theme(plot.background = element_rect(fill="white", color = NA))
 
 fig_5
 
 ```
-
 
 ```{r, include=FALSE, eval=FALSE}
 
@@ -747,5 +750,169 @@ save_plot(
 )
 
 ```
+
+
+
+```{r, eval=FALSE, message=FALSE, include=FALSE}
+
+if (metric == "tAI" & data_tag == "ecoli_full") {
+  
+  # fit models
+  lm_exp2 <- lm(roc_semppr_mean ~ mean, data = full_df)
+  lm_gci2 <- lm(roc_semppr_mean ~ lin_r, data = full_df)
+  lm_exp_gci2 <- lm(roc_semppr_mean ~ mean + lin_r, data = full_df)
+  lm_inter2 <- lm(roc_semppr_mean ~ mean + lin_r + mean*lin_r, data = full_df)
+  
+  fig_t_a <- tibble(
+    model = c(
+      "expression",
+      "gci",
+      "both_add",
+      "both_inter"
+    ),
+    adj_r2 = c(
+      glance(lm_exp2)$adj.r.squared,
+      glance(lm_gci2)$adj.r.squared,
+      glance(lm_exp_gci2)$adj.r.squared,
+      glance(lm_inter2)$adj.r.squared
+    )
+  ) %>% 
+    ggplot(
+      aes(
+        adj_r2,
+        fct_relevel(model, "both_inter", "both_add", "gci", "expression")
+      )
+    ) +
+    geom_col() +
+    scale_x_continuous(
+      name = "Adjusted *R*<sup>2</sup>",
+      limits = c(0, .4)
+    ) +
+    scale_y_discrete(
+      labels = c("Both (interaction)", 
+               "Both", "GCI", "Expression")
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      axis.title.y = element_blank(),
+      axis.title.x = element_markdown()
+    )
+  
+  # create new data sets with model predictions
+  new_data2 <- expand_grid(
+    mean = seq(
+      from = max(full_df$mean), 
+      to = min(full_df$mean), 
+      length.out = 100
+    ),
+    lin_r = seq(
+      from = 1, 
+      to = -1, 
+      length.out = 7)
+  )
+
+  gci_models2 <- new_data2 %>% 
+    mutate(
+      pred_tai_lm_exp = predict(lm_exp2, new_data2),
+      pred_tai_lm_both = predict(lm_exp_gci2, new_data2),
+      pred_tai_lm_inter = predict(lm_inter2, new_data2),
+      lin_r = factor(round(lin_r, 3))
+  )
+  
+  # plot models
+  # expression model
+  fig_t_b <- tibble(
+    tAI = full_df$tAI,
+    express = full_df$mean
+  ) %>% 
+    ggplot() +
+      geom_point(aes(express, tAI), alpha = 0.1) +
+      geom_line(
+        data = gci_models2, 
+        aes(mean, pred_tai_lm_exp), 
+        color = "#CC4678FF", # use color of GCI=0 in other plots
+        size = 1
+      ) +
+      scale_x_continuous(name = "Expression (mean, log TPM)") +
+      scale_color_viridis_d(option = "C") +
+      theme_half_open() +
+      background_grid()
+  
+  # additive model
+  fig_t_c <- tibble(
+    tAI = full_df$tAI,
+    express = full_df$mean
+  ) %>% 
+    ggplot() +
+    geom_point(aes(express, tAI), alpha = 0.1) +
+    geom_line(
+      data = gci_models2, 
+      aes(mean, pred_tai_lm_both, color = fct_rev(lin_r)), 
+      size = 1
+    ) +
+    scale_x_continuous(name = "Expression (mean, log TPM)") +
+    scale_color_viridis_d(
+      option = "C",
+      name = "GCI"
+    ) +
+    theme_half_open() +
+    background_grid() +
+    theme(legend.position = "none")
+  
+  # interaction model
+  fig_t_d <- tibble(
+    tAI = full_df$tAI,
+    express = full_df$mean
+  ) %>% 
+    ggplot() +
+    geom_point(aes(express, tAI), alpha = 0.1) +
+    geom_line(
+      data = gci_models2, 
+      aes(mean, pred_tai_lm_inter, color = fct_rev(lin_r)), 
+      size = 1
+    ) +
+    scale_x_continuous(name = "Expression (mean, log TPM)") +
+    scale_color_viridis_d(
+      option = "C",
+      name = "GCI"
+    ) +
+    theme_half_open() +
+    background_grid() +
+    theme(legend.position = "none")
+    
+}
+
+
+```
+
+
+```{r, message=FALSE, eval=FALSE}
+
+# extract shared legend
+legend <- get_legend(
+  fig_t_c + 
+    guides(color = guide_legend(nrow = 1)) +
+    theme(legend.position = "bottom")
+)
+
+plots2 <- plot_grid(
+  fig_t_a, fig_t_b, fig_t_c, fig_t_d,
+  nrow = 2,
+  labels = "AUTO"
+) 
+
+fig_5_tai <- plot_grid(
+  plots2, legend,
+  nrow = 2,
+  rel_heights = c(1, .05)
+) +
+  theme(plot.background = element_rect(fill="white", color = NA))
+
+fig_5_tai
+
+```
+
+
+
 
 
