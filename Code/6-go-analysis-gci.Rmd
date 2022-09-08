@@ -1,0 +1,593 @@
+---
+title: "Enrichment Gene Analysis"
+author: "Luiz Carlos Vieira"
+output: html_document
+---
+
+Functional enrichment analysis is a technique used to interpret and investigate gene lists, derived from 
+high-throughput sequence studies.
+
+The clusterProfiler library is designed to perform "over-representation analysis" (ORA), using GO and KEGG
+for multiple model organisms and compare functional profiles of various conditions at one level (e.g.,
+different treatment groups).
+
+One of the main limitations of ORA is that it restricts the analysis to DE genes, excluding genes that do not
+satisfy the chosen significance threshold (usually the vast majority).
+
+[Mais informações sobre clusterProfiler](https://www.sciencedirect.com/science/article/pii/S2666675821000667)
+
+Enrichment of pathways with the terms GO and the KEGG encyclopedia are the most used for functional analysis,
+due to its long-standing curation and availability for a wide range of species.
+
+# load libraries
+```{r, message=FALSE}
+########### Gene Anotation ###########
+#BiocManager::install("AnnotationDbi")
+#BiocManager::install("org.EcK12.eg.db")
+library(AnnotationDbi)
+library(org.EcK12.eg.db)
+
+
+##### Pathway analysis of DE genes #####
+#BiocManager::install("clusterProfiler")
+#BiocManager::install("pathview")
+library(clusterProfiler)
+library(enrichplot)
+library(pathview)
+library(ggplot2)
+library(dplyr)
+library(openxlsx)
+```
+
+
+
+## Load data
+```{r}
+path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/genes_GCI/'
+
+data <- read_csv(glue('{path_to_data}ecoli_full_pos_corr.csv'))
+neg_data <- read_csv(glue('{path_to_data}ecoli_full_neg_corr.csv'))
+
+prune_data <- data %>% 
+  arrange(desc(GCI)) %>%
+  slice(1:(0.1*nrow(data))) 
+
+prune_neg_data <- neg_data %>% 
+  arrange(desc(GCI)) %>%
+  slice(1:(0.1*nrow(neg_data))) 
+
+head(data)
+```
+
+
+## Mapping gene names to entrzID
+```{r}
+# check keytypes available
+#keytypes(org.EcK12.eg.db)
+#columns(org.EcK12.eg.db)
+
+#AnnotationDbi::select(org.EcK12.eg.db, keys=id, columns=c("SYMBOL","GENENAME"), keytype="ENTREZID")
+
+data$ENTREZID <- mapIds(org.EcK12.eg.db,
+                              keys = data$gene_name,
+                              column = "ENTREZID",
+                              keytype = "SYMBOL",
+                              multiVals = "first")
+
+prune_data$ENTREZID <- mapIds(org.EcK12.eg.db,
+                              keys = prune_data$gene_name,
+                              column = "ENTREZID",
+                              keytype = "SYMBOL",
+                              multiVals = "first")
+
+neg_data$ENTREZID <- mapIds(org.EcK12.eg.db,
+                              keys = neg_data$gene_name,
+                              column = "ENTREZID",
+                              keytype = "SYMBOL",
+                              multiVals = "first")
+
+prune_neg_data$ENTREZID <- mapIds(org.EcK12.eg.db,
+                              keys = prune_neg_data$gene_name,
+                              column = "ENTREZID",
+                              keytype = "SYMBOL",
+                              multiVals = "first")
+```
+
+
+## Removing duplicates gene names
+```{r}
+data <- distinct(data, gene_name, .keep_all= TRUE)
+
+prune_data <- distinct(prune_data, gene_name, .keep_all= TRUE)
+
+neg_data <- distinct(neg_data, gene_name, .keep_all= TRUE)
+
+prune_neg_data <- distinct(prune_neg_data, gene_name, .keep_all= TRUE)
+
+head(data)
+```
+
+
+
+## Creating a list with differential expressed genes. 
+
+The funtion enrich...() (gene = a vector with entrez gene_id)
+```{r}  
+# removing genes without entrezID
+mtx <- subset(data, is.na(ENTREZID) == FALSE)
+p_mtx <- subset(prune_data, is.na(ENTREZID) == FALSE)
+n_mtx <- subset(neg_data, is.na(ENTREZID) == FALSE)
+p_n_mtx <- subset(prune_neg_data, is.na(ENTREZID) == FALSE)
+
+# creating a new matrix
+gene_matrix <- mtx$GCI
+p_gene_matrix <- p_mtx$GCI
+n_gene_matrix <- n_mtx$GCI
+p_n_gene_matrix <- p_n_mtx$GCI
+
+# Add entrezID as rownames 
+names(gene_matrix) <- mtx$ENTREZID
+names(p_gene_matrix) <- p_mtx$ENTREZID
+names(n_gene_matrix) <- n_mtx$ENTREZID
+names(p_n_gene_matrix) <- p_n_mtx$ENTREZID
+
+# subseting GCI > 0. ## choose any value that suits you.
+# in ths case nothing is done.
+geneList <- gene_matrix[abs(gene_matrix) > 0] 
+p_geneList <- p_gene_matrix[abs(p_gene_matrix) > 0] 
+n_geneList <- n_gene_matrix[abs(n_gene_matrix) > 0] 
+p_n_geneList <- p_n_gene_matrix[abs(p_n_gene_matrix) > 0] 
+
+head(geneList, 10)
+```
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+#                                   GO Terms Enrichment
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+# Gene Ontology [GO](http://geneontology.org/docs/ontology-documentation/)
+
+Gene Ontology defines concepts/classes used to describe gene function and the relationships between these
+concepts. It classifies functions in three aspects:
+
+* MF: Molecular Function, molecular activities of gene products
+
+* CC: Cellular Component, where gene products are active
+
+* BP: Biological Process, pathways and major processes constituted by the activities of various gene products
+
+The GO terms are arranged on a directed acyclic graph, where the border between the terms represents the
+parental relationship.
+
+
+
+## Enrichment GO ALL(MF, CC, BP)
+```{r}
+go_enrich_ALL <- enrichGO(
+  gene=names(geneList),
+  OrgDb= 'org.EcK12.eg.db',
+  keyType = "ENTREZID",
+  ont = "ALL",
+  pvalueCutoff = 0.04,
+  pAdjustMethod = "BH",
+  qvalueCutoff = 0.05,
+  readable = TRUE,
+  pool = FALSE
+)
+
+summary_go_ALL <- as.data.frame(go_enrich_ALL)
+head(summary_go_ALL)
+
+go_enrich_prune <- enrichGO(
+  gene=names(p_geneList),
+  OrgDb= 'org.EcK12.eg.db',
+  keyType = "ENTREZID",
+  ont = "ALL",
+  pvalueCutoff = 0.04,
+  pAdjustMethod = "BH",
+  qvalueCutoff = 0.05,
+  readable = TRUE,
+  pool = FALSE
+)
+
+summary_go_prune <- as.data.frame(go_enrich_prune)
+
+go_enrich_ALL_neg <- enrichGO(
+  gene=names(n_geneList),
+  OrgDb= 'org.EcK12.eg.db',
+  keyType = "ENTREZID",
+  ont = "ALL",
+  pvalueCutoff = 0.04,
+  pAdjustMethod = "BH",
+  qvalueCutoff = 0.05,
+  readable = TRUE,
+  pool = FALSE
+)
+
+summary_go_ALL_neg <- as.data.frame(go_enrich_ALL_neg)
+
+go_enrich_prune_neg <- enrichGO(
+  gene=names(p_n_geneList),
+  OrgDb= 'org.EcK12.eg.db',
+  keyType = "ENTREZID",
+  ont = "ALL",
+  pvalueCutoff = 0.04,
+  pAdjustMethod = "BH",
+  qvalueCutoff = 0.05,
+  readable = TRUE,
+  pool = FALSE
+)
+
+summary_go_prune_neg <- as.data.frame(go_enrich_prune_neg)
+
+# ## saving the results
+# write.xlsx(summary_go_ALL, 'summary_go_ALL.xlsx')
+```
+
+As a result of the enrichment analysis, a table with the following values is generated:
+
+
+BgRatio, M/N.
+
+M = size of the geneset (eg number of genes on the term).
+
+N = size of all of the unique genes in the collection of genesets
+
+
+GeneRatio, k/n.
+
+k = only unique genes, the number of genes within that list n (geneList), which are annotated to the term.
+
+n = only unique genes; is the size of the list of genes of interest in the term represented by a geneset
+
+
+
+### Barplot das vias GO ALL
+
+Bar plot is the most widely used method to visualize enriched terms. It depicts the enrichment scores
+(e.g. p values) and gene count or ratio as bar height and color
+```{r}
+fig_go_bar <- barplot(go_enrich_ALL, 
+        drop = TRUE, 
+        showCategory = 10, #50, 
+        title = "GO Term Enrichment (ALL)",
+        font.size = 8)
+
+fig_go_bar
+
+#ggsave(file.path("barplot_GO_ALL.jpeg"))
+```
+
+```{r}
+fig_go_bar_p <- barplot(go_enrich_prune, 
+        drop = TRUE, 
+        showCategory = 10, #50, 
+        title = "GO Term Enrichment (top 10%)",
+        font.size = 8)
+
+fig_go_bar_p
+```
+
+```{r}
+fig_go_bar_neg <- barplot(go_enrich_ALL_neg, 
+        drop = TRUE, 
+        showCategory = 10, #50, 
+        title = "GO Term Enrichment (ALL)",
+        font.size = 8)
+
+fig_go_bar_neg
+```
+
+```{r}
+fig_go_bar_p_n <- barplot(go_enrich_prune_neg, 
+        drop = TRUE, 
+        showCategory = 10, #50, 
+        title = "GO Term Enrichment (top 10%)",
+        font.size = 8)
+
+fig_go_bar_p_n
+```
+
+
+
+### Dotplot
+
+Dot plot is similar to bar plot with the capability to encode another score as dot size.
+
+```{r}
+fig_go_dot <- dotplot(go_enrich_ALL, 
+        showCategory= 10, #40,
+        title = "GO term enrichment (positive GCI)",
+        label_format = 30,
+        font.size= 8) 
+
+fig_go_dot
+
+# summary_go_ALL %>% 
+#   arrange(desc(Count)) %>% 
+#   slice(1:10) %>% 
+#   ggplot() + 
+#   geom_point(aes(x = GeneRatio, y = Description))
+
+#ggsave(file.path("dotplot_GO_ALL.jpeg"))
+```
+
+```{r}
+fig_go_dot_p <- dotplot(go_enrich_prune, 
+        showCategory= 10, #40,
+        title = "GO Term Enrichment (top 10%)",
+        label_format = 30,
+        font.size= 8) 
+
+fig_go_dot_p
+```
+
+```{r}
+
+fig_go_dot_neg <- dotplot(go_enrich_ALL_neg, 
+        showCategory= 10, #40,
+        title = "GO term enrichment (negative GCI)",
+        label_format = 30,
+        font.size= 8) 
+
+fig_go_dot_neg
+
+```
+
+```{r}
+fig_go_dot_p_n <- dotplot(go_enrich_prune_neg, 
+        showCategory= 10, #40,
+        title = "GO Term Enrichment (top 10%)",
+        label_format = 30,
+        font.size= 8) 
+
+fig_go_dot_p_n
+```
+
+
+
+
+```{r}
+
+library(patchwork)
+
+fig_6 <- fig_core_gci / (fig_go_dot_neg | fig_go_dot)
+
+
+save_plot(
+  file.path(
+    path_to_figures,  
+    glue('fig_core_go_gci.png')   # file name
+  ),
+  fig_6, 
+  ncol = 1, 
+  nrow = 1, 
+  base_height = 7.71, #base_height = 5.71,
+  base_asp = 1.618, 
+  base_width = NULL
+)
+
+
+```
+
+
+
+
+### Gene-Concept Network
+
+Both the barplot() and dotplot() only displayed most significant or selected enriched terms, while users may
+want to know which genes are involved in these significant terms. 
+
+In order to consider the potentially biological complexities in which a gene may belong to multiple annotation 
+categories and provide information of numeric changes if available.
+
+```{r, fig.height=10, fig.width=10}
+cnetplot(
+  go_enrich_ALL,
+  showCategory = 5,
+  foldChange = geneList,
+  layout = "kk",
+  colorEdge = FALSE,
+  circular = FALSE,
+  node_label = "all",
+  cex_category = 1,
+  cex_gene = 0.5,
+  cex_label_category = 0.6,
+  cex_label_gene = 0.4,
+  shadowtext = 'gene'
+) #+ coord_cartesian(clip = "off")
+
+
+#?cnetplot
+ggsave(file.path("cnetplot_GO_ALL.jpeg"))
+```
+
+
+
+
+### Heatmap-like functional classification
+
+Heatplot is similar to cnetplot but displays relationships as a heatmap. The "Gene-Concept Network"
+can become very complicated if it presents a large number of significant terms. The heatplot can
+simplify the result facilitating the identification of expression patterns.
+
+```{r, fig.height=16, fig.width=10}
+# Can be improved by minimizing the number of genes
+heatplot(go_enrich_ALL, showCategory=10, foldChange=geneList) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_discrete(expand=c(0, 0.5)) +
+  theme(axis.text.y = element_text(size=rel(0.8)), 
+        axis.text.x = element_text(face="bold", size=rel(1.2))) +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1),
+        axis.text.y = element_text(angle = 0, vjust = 0, hjust=1)) +
+  ggtitle("Heatplot GO ALL") +
+  theme(plot.title = element_text(color="black", size=16, face="bold"))
+        
+
+ggsave(file.path("heatplot_GO_ALL.jpeg"))
+```
+
+
+### Tree plot
+
+The treeplot() function performs hierarchical clustering of enriched terms. It relies on the pairwise 
+similarities of the enriched terms calculated by the pairwise_termsim() function, which by default using 
+Jaccard’s similarity index (JC).
+
+```{r, fig.height=10, fig.width=12}
+tree_plot_data <- pairwise_termsim(go_enrich_ALL)
+
+treeplot(tree_plot_data,
+         showCategory = 30,
+         label_format = 20,
+         guide = "none",
+         offset=9)
+
+ggsave(file.path("treeplot_GO_ALL.jpeg"))
+```
+
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+#                            Enrichment with KEGG database
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
+
+## Kyoto Encyclopedia of Genes and Genomes (KEGG)
+
+KEGG is a collection of hand-drawn road maps that represent interaction and reaction networks
+molecular. These pathways cover a wide range of biochemical processes that can be divided into 7 major
+categories:
+
+* Metabolism
+* Processing of genetic information
+* Environmental information processing
+* Cellular processes
+* Organizational systems
+* human diseases
+* Drug development.
+
+To consult the list of organisms supported by the database, see the link below:
+[Lista de organismo](https://www.genome.jp/kegg/catalog/org_list.html)
+
+
+## Enrichment with KEGG
+```{r}
+kegg_enrich <- enrichKEGG(gene= names(geneList),
+                          organism = "eco",     
+                          keyType = 'ncbi-geneid',
+                          pvalueCutoff = 0.04,
+                          pAdjustMethod = "BH",
+                          qvalueCutoff = 0.05,
+                          use_internal_data = FALSE
+                          )
+
+# Set gene_id to a human readble format
+kegg_enrich.H <- setReadable(kegg_enrich, OrgDb= org.EcK12.eg.db, keyType= "ENTREZID")
+
+# Summary of results:
+summary_kegg_enrich <- as.data.frame(kegg_enrich.H)
+
+head(summary_kegg_enrich, 10)
+
+## salving results:
+#write.xlsx(summary_kegg_enrich, 'summary_kegg_enrich.xlsx')
+```
+
+
+## KEGG barplot
+```{r}
+fig_kegg_bar <- barplot(kegg_enrich, 
+        drop = TRUE, 
+        showCategory = 10, #50, 
+        title = "KEGG Enrichment Pathways",
+        font.size = 8)
+
+fig_kegg_bar
+
+#ggsave(file.path("barplot_Kegg.jpeg"))
+```
+
+
+## Kegg Dotplot
+```{r}
+fig_kegg_dot <- dotplot(kegg_enrich, 
+        showCategory = 10, #40,
+        title = "Kegg Enrichment",
+        label_format = 30,
+        font.size= 9)
+
+fig_kegg_dot
+
+#ggsave(file.path("dotplot_Kegg.jpeg"))
+```
+
+
+## Gene-Concept Network
+```{r, fig.height=10, fig.width=10}
+cnetplot(
+  kegg_enrich.H,
+  showCategory = 5,
+  foldChange = geneList,
+  layout = "kk",
+  colorEdge = FALSE,
+  circular = FALSE,
+  node_label = "all",
+  cex_category = 1,
+  cex_gene = 0.5,
+  cex_label_category = 0.6,
+  cex_label_gene = 0.5,
+  shadowtext = "all"
+) + coord_cartesian(clip = "off")
+
+ggsave(file.path("cnetplot_Kegg.jpeg"))
+```
+
+
+
+## Heatmap-like functional classification
+```{r, fig.height=14, fig.width=10}
+heatplot(kegg_enrich.H, showCategory=8, foldChange=geneList) +
+  coord_flip() +
+  theme_classic() +
+  scale_y_discrete(expand=c(0, 0.5)) +
+  theme(axis.text.y = element_text(size=rel(0.8)), 
+        axis.text.x = element_text(face="bold", size=rel(1.2))) +
+  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1),
+        axis.text.y = element_text(angle = 0, vjust = 0, hjust=1)) +
+  ggtitle("Heatplot kegg enrichment") +
+  theme(plot.title = element_text(color="black", size=16, face="bold"))
+        
+ggsave(file.path("heatplot_Kegg.jpeg"))
+```
+
+
+## Tree plot
+```{r, fig.height=10, fig.width=12}
+tree_plot_kegg <- pairwise_termsim(kegg_enrich)
+
+treeplot(tree_plot_kegg,
+         showCategory = 30,
+         label_format = 20,
+         offset = 9,
+         guide = "none")
+
+ggsave(file.path("treeplot_Kegg.jpeg"))
+```
+
+
+## Referências:
+
+[Paper clusterProfile](https://www.sciencedirect.com/science/article/pii/S2666675821000667)  
+[clusterProfile book](https://yulab-smu.top/biomedical-knowledge-mining-book/index.html)  
+[rdocumentation-enrichgo](https://www.rdocumentation.org/packages/clusterProfiler/versions/3.0.4/topics/enrichGO)  
+[rdocumentation-enrichkegg](https://www.rdocumentation.org/packages/clusterProfiler/versions/3.0.4/topics/enrichKEGG)  
+[rdocumentation-enrichomics](https://www.bioconductor.org/help/course-materials/2017/BioC2017/Day1/Workshops/OmicsData/doc/enrichOmics.html)  
+
+
+### Session Info
+```{r}
+sessionInfo()
+```

@@ -17,6 +17,7 @@ library(pheatmap)
 library(viridis)
 library(cowplot)
 library(ggtext)
+library(patchwork)
 
 ```
 
@@ -89,6 +90,21 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 full_df <- read_tsv(analysis_files$cub_file) %>% 
   select(locus_tag, gene)
+
+# get list of core genes
+core_df <- read_tsv(
+  file = glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
+) %>% 
+  select(`Gene Name`, `Note`)
+
+full_df <- full_df %>% 
+  mutate(
+    genome = case_when(
+      gene %in% core_df$`Gene Name` ~ "core",
+      TRUE ~ "accessory"
+    )) 
+
+rm(core_df)
 
 ```
 
@@ -490,6 +506,12 @@ perm_df <- tibble(
 exp_gr_corr %>% filter(pearsons == max(pearsons)) %>% .$genes
 exp_gr_corr %>% filter(pearsons == min(pearsons)) %>% .$genes
 
+
+```
+
+
+```{r, message=FALSE}
+
 make_cor_plot <- function(x, gname) {
   x <- enquo(x)
   exp_gr_df %>%
@@ -546,7 +568,6 @@ fig_perm <- perm_df %>%
 ## Figure 4:
 ```{r}
 
-library(patchwork)
 fig_4 <- (fig_ant_cor | fig_pos_cor) / fig_perm +
    plot_annotation(
      tag_levels = "A"
@@ -555,8 +576,6 @@ fig_4 <- (fig_ant_cor | fig_pos_cor) / fig_perm +
 fig_4
 
 ```
-
-
 
 ```{r, include=FALSE, eval=FALSE}
 
@@ -576,7 +595,58 @@ save_plot(
 ```
 
 
-## Save gene GCI data for use in GO analysis
+## Explore properties of genes with high and low GCI
+
+
+```{r, message=FALSE}
+
+exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes)
+
+gci_genomes_df <- exp_gr_corr %>% 
+  left_join(., full_df, by = c("genes" = "locus_tag"))
+
+core_gci <- gci_genomes_df %>% 
+  filter(genome == "core") %>% 
+  select(pearsons)
+
+access_gci <- gci_genomes_df %>% 
+  filter(genome == "accessory") %>% 
+  select(pearsons)
+
+t_test_results <- t.test(core_gci, access_gci)
+
+# create label data set
+ttest_text <- data.frame(
+  label = glue(
+    'p-value = {scales::scientific(
+    t_test_results$p.value, digits = 3
+    )}'),
+  x = 0.3, 
+  y = 1.4
+)
+
+fig_core_gci <- gci_genomes_df %>% 
+  drop_na(genome) %>% 
+  ggplot(aes(x = pearsons, fill = genome)) +
+  geom_density(alpha = 0.5) +
+  geom_richtext(
+    data = ttest_text,
+    aes(x = x, y = y, label = label),
+    label.color = NA,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(name = "GCI") +
+  scale_y_continuous(name = "Density") +
+  scale_fill_viridis_d(name = "Gene type") +
+  theme_minimal_grid()
+
+
+```
+
+
+
+
+#### Save gene GCI data for use in GO analysis
 ```{r, message=FALSE, eval=FALSE}
 
 if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
