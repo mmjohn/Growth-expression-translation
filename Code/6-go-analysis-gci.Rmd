@@ -1,6 +1,6 @@
 ---
 title: "Enrichment Gene Analysis"
-author: "Luiz Carlos Vieira"
+author: "Luiz Carlos Vieira and Mackenzie Johnson"
 output: html_document
 ---
 
@@ -34,11 +34,13 @@ library(org.EcK12.eg.db)
 library(clusterProfiler)
 library(enrichplot)
 library(pathview)
-library(ggplot2)
-library(dplyr)
 library(openxlsx)
+library(tidyverse)
+library(glue)
+library(patchwork)
+library(ggtext)
+library(cowplot)
 ```
-
 
 
 ## Load data
@@ -47,14 +49,6 @@ path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-
 
 data <- read_csv(glue('{path_to_data}ecoli_full_pos_corr.csv'))
 neg_data <- read_csv(glue('{path_to_data}ecoli_full_neg_corr.csv'))
-
-prune_data <- data %>% 
-  arrange(desc(GCI)) %>%
-  slice(1:(0.1*nrow(data))) 
-
-prune_neg_data <- neg_data %>% 
-  arrange(desc(GCI)) %>%
-  slice(1:(0.1*nrow(neg_data))) 
 
 head(data)
 ```
@@ -74,23 +68,12 @@ data$ENTREZID <- mapIds(org.EcK12.eg.db,
                               keytype = "SYMBOL",
                               multiVals = "first")
 
-prune_data$ENTREZID <- mapIds(org.EcK12.eg.db,
-                              keys = prune_data$gene_name,
-                              column = "ENTREZID",
-                              keytype = "SYMBOL",
-                              multiVals = "first")
-
 neg_data$ENTREZID <- mapIds(org.EcK12.eg.db,
                               keys = neg_data$gene_name,
                               column = "ENTREZID",
                               keytype = "SYMBOL",
                               multiVals = "first")
 
-prune_neg_data$ENTREZID <- mapIds(org.EcK12.eg.db,
-                              keys = prune_neg_data$gene_name,
-                              column = "ENTREZID",
-                              keytype = "SYMBOL",
-                              multiVals = "first")
 ```
 
 
@@ -98,45 +81,32 @@ prune_neg_data$ENTREZID <- mapIds(org.EcK12.eg.db,
 ```{r}
 data <- distinct(data, gene_name, .keep_all= TRUE)
 
-prune_data <- distinct(prune_data, gene_name, .keep_all= TRUE)
-
 neg_data <- distinct(neg_data, gene_name, .keep_all= TRUE)
-
-prune_neg_data <- distinct(prune_neg_data, gene_name, .keep_all= TRUE)
 
 head(data)
 ```
 
 
+## Creating a list with differential expressed genes
 
-## Creating a list with differential expressed genes. 
-
-The funtion enrich...() (gene = a vector with entrez gene_id)
+The function enrich...() (gene = a vector with entrez gene_id)
 ```{r}  
 # removing genes without entrezID
 mtx <- subset(data, is.na(ENTREZID) == FALSE)
-p_mtx <- subset(prune_data, is.na(ENTREZID) == FALSE)
 n_mtx <- subset(neg_data, is.na(ENTREZID) == FALSE)
-p_n_mtx <- subset(prune_neg_data, is.na(ENTREZID) == FALSE)
 
 # creating a new matrix
 gene_matrix <- mtx$GCI
-p_gene_matrix <- p_mtx$GCI
 n_gene_matrix <- n_mtx$GCI
-p_n_gene_matrix <- p_n_mtx$GCI
 
-# Add entrezID as rownames 
+# add entrezID as rownames 
 names(gene_matrix) <- mtx$ENTREZID
-names(p_gene_matrix) <- p_mtx$ENTREZID
 names(n_gene_matrix) <- n_mtx$ENTREZID
-names(p_n_gene_matrix) <- p_n_mtx$ENTREZID
 
-# subseting GCI > 0. ## choose any value that suits you.
-# in ths case nothing is done.
+# subseting GCI > 0
+# in this case nothing is done
 geneList <- gene_matrix[abs(gene_matrix) > 0] 
-p_geneList <- p_gene_matrix[abs(p_gene_matrix) > 0] 
-n_geneList <- n_gene_matrix[abs(n_gene_matrix) > 0] 
-p_n_geneList <- p_n_gene_matrix[abs(p_n_gene_matrix) > 0] 
+n_geneList <- n_gene_matrix[abs(n_gene_matrix) > 0]  
 
 head(geneList, 10)
 ```
@@ -162,8 +132,7 @@ The GO terms are arranged on a directed acyclic graph, where the border between 
 parental relationship.
 
 
-
-## Enrichment GO ALL(MF, CC, BP)
+## Enrichment GO ALL (MF, CC, BP)
 ```{r}
 go_enrich_ALL <- enrichGO(
   gene=names(geneList),
@@ -178,21 +147,6 @@ go_enrich_ALL <- enrichGO(
 )
 
 summary_go_ALL <- as.data.frame(go_enrich_ALL)
-head(summary_go_ALL)
-
-go_enrich_prune <- enrichGO(
-  gene=names(p_geneList),
-  OrgDb= 'org.EcK12.eg.db',
-  keyType = "ENTREZID",
-  ont = "ALL",
-  pvalueCutoff = 0.04,
-  pAdjustMethod = "BH",
-  qvalueCutoff = 0.05,
-  readable = TRUE,
-  pool = FALSE
-)
-
-summary_go_prune <- as.data.frame(go_enrich_prune)
 
 go_enrich_ALL_neg <- enrichGO(
   gene=names(n_geneList),
@@ -207,27 +161,9 @@ go_enrich_ALL_neg <- enrichGO(
 )
 
 summary_go_ALL_neg <- as.data.frame(go_enrich_ALL_neg)
-
-go_enrich_prune_neg <- enrichGO(
-  gene=names(p_n_geneList),
-  OrgDb= 'org.EcK12.eg.db',
-  keyType = "ENTREZID",
-  ont = "ALL",
-  pvalueCutoff = 0.04,
-  pAdjustMethod = "BH",
-  qvalueCutoff = 0.05,
-  readable = TRUE,
-  pool = FALSE
-)
-
-summary_go_prune_neg <- as.data.frame(go_enrich_prune_neg)
-
-# ## saving the results
-# write.xlsx(summary_go_ALL, 'summary_go_ALL.xlsx')
 ```
 
 As a result of the enrichment analysis, a table with the following values is generated:
-
 
 BgRatio, M/N.
 
@@ -240,63 +176,263 @@ GeneRatio, k/n.
 
 k = only unique genes, the number of genes within that list n (geneList), which are annotated to the term.
 
-n = only unique genes; is the size of the list of genes of interest in the term represented by a geneset
+n = only unique genes; is the size of the list of genes of interest in the term represented by a gene set
 
 
-
-### Barplot das vias GO ALL
-
-Bar plot is the most widely used method to visualize enriched terms. It depicts the enrichment scores
-(e.g. p values) and gene count or ratio as bar height and color
+## Calculate Odds Ratio from clusterProfiler GO output
 ```{r}
-fig_go_bar <- barplot(go_enrich_ALL, 
-        drop = TRUE, 
-        showCategory = 10, #50, 
-        title = "GO Term Enrichment (ALL)",
-        font.size = 8)
 
-fig_go_bar
+df_go_pos_gci <- summary_go_ALL %>% 
+  select(c(Description, GeneRatio, BgRatio, p.adjust)) %>% # keep only necessary columns
+  extract( # split ratios into numerator and denominator to build contingency table
+    GeneRatio, 
+    into = c("gene_num", "gene_denom"), 
+    regex = "([[:alnum:]]+)/([[:alnum:]]+)"
+  ) %>% 
+  extract(
+    BgRatio,
+    into = c("bg_num", "bg_denom"),
+    regex = "([[:alnum:]]+)/([[:alnum:]]+)"
+  ) %>% 
+  dplyr::mutate(
+    cat_a = as.numeric(gene_num),
+    cat_b = as.numeric(gene_denom) - cat_a,
+    cat_c = as.numeric(bg_num) - cat_a,
+    cat_d = as.numeric(bg_denom) - cat_a - cat_b - cat_c,
+    odds_ratio = (cat_a/cat_b)/(cat_c/cat_d)
+  ) 
+  
+df_go_neg_gci <- summary_go_ALL_neg %>% 
+  select(c(Description, GeneRatio, BgRatio, p.adjust)) %>% # keep only necessary columns
+  extract( # split ratios into numerator and denominator to build contingency table
+    GeneRatio, 
+    into = c("gene_num", "gene_denom"), 
+    regex = "([[:alnum:]]+)/([[:alnum:]]+)"
+  ) %>% 
+  extract(
+    BgRatio,
+    into = c("bg_num", "bg_denom"),
+    regex = "([[:alnum:]]+)/([[:alnum:]]+)"
+  ) %>% 
+  dplyr::mutate(
+    cat_a = as.numeric(gene_num),
+    cat_b = as.numeric(gene_denom) - cat_a,
+    cat_c = as.numeric(bg_num) - cat_a,
+    cat_d = as.numeric(bg_denom) - cat_a - cat_b - cat_c,
+    odds_ratio = (cat_a/cat_b)/(cat_c/cat_d)
+  ) 
 
-#ggsave(file.path("barplot_GO_ALL.jpeg"))
 ```
 
-```{r}
-fig_go_bar_p <- barplot(go_enrich_prune, 
-        drop = TRUE, 
-        showCategory = 10, #50, 
-        title = "GO Term Enrichment (top 10%)",
-        font.size = 8)
-
-fig_go_bar_p
-```
 
 ```{r}
-fig_go_bar_neg <- barplot(go_enrich_ALL_neg, 
-        drop = TRUE, 
-        showCategory = 10, #50, 
-        title = "GO Term Enrichment (ALL)",
-        font.size = 8)
 
-fig_go_bar_neg
-```
+fig_go_pos <- df_go_pos_gci %>% 
+  arrange(desc(odds_ratio)) %>% 
+  slice(1:15) %>% 
+  mutate(labels = str_wrap(Description, 30)) %>% 
+  ggplot() +
+  aes(x = odds_ratio, y = fct_reorder(labels, odds_ratio)) +
+  geom_point(size = 3) +
+  scale_x_continuous(name = "Odds Ratio") +
+  scale_y_discrete(name = NULL) +
+  ggtitle("GO enrichment (GCI > 0)") +
+  theme_bw() 
 
-```{r}
-fig_go_bar_p_n <- barplot(go_enrich_prune_neg, 
-        drop = TRUE, 
-        showCategory = 10, #50, 
-        title = "GO Term Enrichment (top 10%)",
-        font.size = 8)
-
-fig_go_bar_p_n
 ```
 
 
+```{r}
 
+label_inf <- tibble(
+  x = 12.5,
+  y = str_wrap("regulation of bacterial-type flagellum-dependent cell motility", 30),
+  lab = "Inf.",
+  infinite = TRUE
+)
+
+fig_go_neg <- df_go_neg_gci %>% 
+  arrange(desc(odds_ratio)) %>% 
+  slice(1:15) %>% 
+  mutate(
+    labels = str_wrap(Description, 30),
+    infinite = case_when(odds_ratio != Inf ~ FALSE, odds_ratio == Inf ~ TRUE)
+  ) %>% 
+  ggplot() +
+  geom_point(
+    aes(
+      x = odds_ratio, 
+      y = fct_reorder(labels, odds_ratio), 
+      color = infinite
+    ),
+    size = 3
+  ) +
+  geom_richtext(
+    data = label_inf,
+    aes(
+      x = x,
+      y = y,
+      label = lab,
+      color = infinite,
+      label.color = NA
+    )
+  ) +
+  scale_x_continuous(name = "Odds Ratio", oob = scales::squish_infinite) +
+  scale_y_discrete(name = NULL) +
+  scale_color_manual(
+    values = c("black", "#009E73")
+  ) +
+  ggtitle("GO enrichment (GCI < 0)") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+```
+
+
+## Add in core vs accessory analysis
+```{r}
+
+path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/'
+
+meta_df <- read_tsv(glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'))
+
+exp_df <- read_tsv(glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'))
+
+full_df <- read_tsv(glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv')) %>% 
+  select(locus_tag, gene)
+
+core_df <- read_tsv(
+  file = glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
+) %>% 
+  select(`Gene Name`, `Note`)
+
+full_df <- full_df %>% 
+  mutate(
+    genome = case_when(
+      gene %in% core_df$`Gene Name` ~ "core",
+      TRUE ~ "accessory"
+    )) 
+
+rm(core_df)
+
+exp_gr_df <- exp_df %>% 
+    gather(-`log-TPM`,
+           key = "condition",
+           value = "expression") %>% 
+    spread(`log-TPM`, expression)
+
+exp_gr_df <- meta_df %>% 
+    select(`Simple_sample_id`, `Growth Rate (1/hr)`) %>% 
+    inner_join(., exp_gr_df, by = c("Simple_sample_id" = "condition"))
+
+exp_gr_corr <- cor(exp_gr_df[2], exp_gr_df[3:ncol(exp_gr_df)], method = "pearson") %>% 
+   as_tibble() %>% 
+   gather(
+     .,
+     key = "genes",
+     value = "pearsons"
+    ) %>%
+   mutate(r2 = pearsons^2)
+
+exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes)
+
+gci_genomes_df <- exp_gr_corr %>% 
+  left_join(., full_df, by = c("genes" = "locus_tag"))
+
+core_gci <- gci_genomes_df %>% 
+  filter(genome == "core") %>% 
+  select(pearsons)
+
+access_gci <- gci_genomes_df %>% 
+  filter(genome == "accessory") %>% 
+  select(pearsons)
+
+t_test_results <- t.test(core_gci, access_gci)
+
+# create label data set
+ttest_text <- data.frame(
+  label = glue(
+    'p-value = {scales::scientific(
+    t_test_results$p.value, digits = 3
+    )}'),
+  x = 0.3, 
+  y = 1.4
+)
+
+fig_core_gci <- gci_genomes_df %>% 
+  drop_na(genome) %>% 
+  ggplot(aes(x = pearsons, fill = genome)) +
+  geom_density(alpha = 0.5) +
+  geom_richtext(
+    data = ttest_text,
+    aes(x = x, y = y, label = label),
+    label.color = NA,
+    inherit.aes = FALSE
+  ) +
+  scale_x_continuous(name = "GCI") +
+  scale_y_continuous(name = "Density") +
+  scale_fill_viridis_d(name = "Gene type") +
+  theme_minimal_grid()
+
+```
+
+
+
+## Figure for core and GO analysis
+```{r}
+
+fig_go_plots <- plot_grid(
+  fig_go_neg, fig_go_pos,
+  nrow = 1
+)
+
+fig_6 <- plot_grid(
+  fig_core_gci, fig_go_plots,
+  nrow = 2,
+  rel_heights = c(.5, 1),
+  labels = "AUTO"
+) + 
+  theme(plot.background = element_rect(fill="white", color = NA))
+
+fig_6
+
+```
+
+
+```{r, eval=FALSE}
+
+path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Manuscript/Figures'
+
+save_plot(
+  file.path(
+    path_to_figures,  
+    glue('fig_core_go_gci.png')   # file name
+  ),
+  fig_6, 
+  ncol = 1, 
+  nrow = 1, 
+  base_height = 6.71, #base_height = 5.71,
+  base_asp = 1.618, 
+  base_width = NULL
+)
+
+```
+
+
+## Referências:
+
+[Paper clusterProfile](https://www.sciencedirect.com/science/article/pii/S2666675821000667)  
+[clusterProfile book](https://yulab-smu.top/biomedical-knowledge-mining-book/index.html)  
+[rdocumentation-enrichgo](https://www.rdocumentation.org/packages/clusterProfiler/versions/3.0.4/topics/enrichGO)  
+[rdocumentation-enrichkegg](https://www.rdocumentation.org/packages/clusterProfiler/versions/3.0.4/topics/enrichKEGG)  
+[rdocumentation-enrichomics](https://www.bioconductor.org/help/course-materials/2017/BioC2017/Day1/Workshops/OmicsData/doc/enrichOmics.html)  
+
+
+
+## NOT CURRENTLY RUNNING
 ### Dotplot
 
-Dot plot is similar to bar plot with the capability to encode another score as dot size.
-
-```{r}
+```{r, eval=FALSE}
 fig_go_dot <- dotplot(go_enrich_ALL, 
         showCategory= 10, #40,
         title = "GO term enrichment (positive GCI)",
@@ -314,17 +450,7 @@ fig_go_dot
 #ggsave(file.path("dotplot_GO_ALL.jpeg"))
 ```
 
-```{r}
-fig_go_dot_p <- dotplot(go_enrich_prune, 
-        showCategory= 10, #40,
-        title = "GO Term Enrichment (top 10%)",
-        label_format = 30,
-        font.size= 8) 
-
-fig_go_dot_p
-```
-
-```{r}
+```{r, eval=FALSE}
 
 fig_go_dot_neg <- dotplot(go_enrich_ALL_neg, 
         showCategory= 10, #40,
@@ -335,120 +461,6 @@ fig_go_dot_neg <- dotplot(go_enrich_ALL_neg,
 fig_go_dot_neg
 
 ```
-
-```{r}
-fig_go_dot_p_n <- dotplot(go_enrich_prune_neg, 
-        showCategory= 10, #40,
-        title = "GO Term Enrichment (top 10%)",
-        label_format = 30,
-        font.size= 8) 
-
-fig_go_dot_p_n
-```
-
-
-
-
-```{r}
-
-library(patchwork)
-
-fig_6 <- fig_core_gci / (fig_go_dot_neg | fig_go_dot)
-
-
-save_plot(
-  file.path(
-    path_to_figures,  
-    glue('fig_core_go_gci.png')   # file name
-  ),
-  fig_6, 
-  ncol = 1, 
-  nrow = 1, 
-  base_height = 7.71, #base_height = 5.71,
-  base_asp = 1.618, 
-  base_width = NULL
-)
-
-
-```
-
-
-
-
-### Gene-Concept Network
-
-Both the barplot() and dotplot() only displayed most significant or selected enriched terms, while users may
-want to know which genes are involved in these significant terms. 
-
-In order to consider the potentially biological complexities in which a gene may belong to multiple annotation 
-categories and provide information of numeric changes if available.
-
-```{r, fig.height=10, fig.width=10}
-cnetplot(
-  go_enrich_ALL,
-  showCategory = 5,
-  foldChange = geneList,
-  layout = "kk",
-  colorEdge = FALSE,
-  circular = FALSE,
-  node_label = "all",
-  cex_category = 1,
-  cex_gene = 0.5,
-  cex_label_category = 0.6,
-  cex_label_gene = 0.4,
-  shadowtext = 'gene'
-) #+ coord_cartesian(clip = "off")
-
-
-#?cnetplot
-ggsave(file.path("cnetplot_GO_ALL.jpeg"))
-```
-
-
-
-
-### Heatmap-like functional classification
-
-Heatplot is similar to cnetplot but displays relationships as a heatmap. The "Gene-Concept Network"
-can become very complicated if it presents a large number of significant terms. The heatplot can
-simplify the result facilitating the identification of expression patterns.
-
-```{r, fig.height=16, fig.width=10}
-# Can be improved by minimizing the number of genes
-heatplot(go_enrich_ALL, showCategory=10, foldChange=geneList) +
-  coord_flip() +
-  theme_classic() +
-  scale_y_discrete(expand=c(0, 0.5)) +
-  theme(axis.text.y = element_text(size=rel(0.8)), 
-        axis.text.x = element_text(face="bold", size=rel(1.2))) +
-  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1),
-        axis.text.y = element_text(angle = 0, vjust = 0, hjust=1)) +
-  ggtitle("Heatplot GO ALL") +
-  theme(plot.title = element_text(color="black", size=16, face="bold"))
-        
-
-ggsave(file.path("heatplot_GO_ALL.jpeg"))
-```
-
-
-### Tree plot
-
-The treeplot() function performs hierarchical clustering of enriched terms. It relies on the pairwise 
-similarities of the enriched terms calculated by the pairwise_termsim() function, which by default using 
-Jaccard’s similarity index (JC).
-
-```{r, fig.height=10, fig.width=12}
-tree_plot_data <- pairwise_termsim(go_enrich_ALL)
-
-treeplot(tree_plot_data,
-         showCategory = 30,
-         label_format = 20,
-         guide = "none",
-         offset=9)
-
-ggsave(file.path("treeplot_GO_ALL.jpeg"))
-```
-
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - #
@@ -474,7 +486,7 @@ To consult the list of organisms supported by the database, see the link below:
 
 
 ## Enrichment with KEGG
-```{r}
+```{r, eval=FALSE}
 kegg_enrich <- enrichKEGG(gene= names(geneList),
                           organism = "eco",     
                           keyType = 'ncbi-geneid',
@@ -498,7 +510,7 @@ head(summary_kegg_enrich, 10)
 
 
 ## KEGG barplot
-```{r}
+```{r, eval=FALSE}
 fig_kegg_bar <- barplot(kegg_enrich, 
         drop = TRUE, 
         showCategory = 10, #50, 
@@ -512,7 +524,7 @@ fig_kegg_bar
 
 
 ## Kegg Dotplot
-```{r}
+```{r, eval=FALSE}
 fig_kegg_dot <- dotplot(kegg_enrich, 
         showCategory = 10, #40,
         title = "Kegg Enrichment",
@@ -523,68 +535,6 @@ fig_kegg_dot
 
 #ggsave(file.path("dotplot_Kegg.jpeg"))
 ```
-
-
-## Gene-Concept Network
-```{r, fig.height=10, fig.width=10}
-cnetplot(
-  kegg_enrich.H,
-  showCategory = 5,
-  foldChange = geneList,
-  layout = "kk",
-  colorEdge = FALSE,
-  circular = FALSE,
-  node_label = "all",
-  cex_category = 1,
-  cex_gene = 0.5,
-  cex_label_category = 0.6,
-  cex_label_gene = 0.5,
-  shadowtext = "all"
-) + coord_cartesian(clip = "off")
-
-ggsave(file.path("cnetplot_Kegg.jpeg"))
-```
-
-
-
-## Heatmap-like functional classification
-```{r, fig.height=14, fig.width=10}
-heatplot(kegg_enrich.H, showCategory=8, foldChange=geneList) +
-  coord_flip() +
-  theme_classic() +
-  scale_y_discrete(expand=c(0, 0.5)) +
-  theme(axis.text.y = element_text(size=rel(0.8)), 
-        axis.text.x = element_text(face="bold", size=rel(1.2))) +
-  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1),
-        axis.text.y = element_text(angle = 0, vjust = 0, hjust=1)) +
-  ggtitle("Heatplot kegg enrichment") +
-  theme(plot.title = element_text(color="black", size=16, face="bold"))
-        
-ggsave(file.path("heatplot_Kegg.jpeg"))
-```
-
-
-## Tree plot
-```{r, fig.height=10, fig.width=12}
-tree_plot_kegg <- pairwise_termsim(kegg_enrich)
-
-treeplot(tree_plot_kegg,
-         showCategory = 30,
-         label_format = 20,
-         offset = 9,
-         guide = "none")
-
-ggsave(file.path("treeplot_Kegg.jpeg"))
-```
-
-
-## Referências:
-
-[Paper clusterProfile](https://www.sciencedirect.com/science/article/pii/S2666675821000667)  
-[clusterProfile book](https://yulab-smu.top/biomedical-knowledge-mining-book/index.html)  
-[rdocumentation-enrichgo](https://www.rdocumentation.org/packages/clusterProfiler/versions/3.0.4/topics/enrichGO)  
-[rdocumentation-enrichkegg](https://www.rdocumentation.org/packages/clusterProfiler/versions/3.0.4/topics/enrichKEGG)  
-[rdocumentation-enrichomics](https://www.bioconductor.org/help/course-materials/2017/BioC2017/Day1/Workshops/OmicsData/doc/enrichOmics.html)  
 
 
 ### Session Info

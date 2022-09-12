@@ -597,7 +597,6 @@ save_plot(
 
 ## Explore properties of genes with high and low GCI
 
-
 ```{r, message=FALSE}
 
 exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes)
@@ -678,7 +677,6 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
   colnames(genes_negative) <- c("GCI", "gene_name")
   
 }
-
 
 write_csv(
   genes_positive, 
