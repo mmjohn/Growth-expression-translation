@@ -22,21 +22,14 @@ due to its long-standing curation and availability for a wide range of species.
 # load libraries
 ```{r, message=FALSE}
 ########### Gene Anotation ###########
-#BiocManager::install("AnnotationDbi")
-#BiocManager::install("org.EcK12.eg.db")
 library(AnnotationDbi)
 library(org.EcK12.eg.db)
 
-
 ##### Pathway analysis of DE genes #####
-#BiocManager::install("clusterProfiler")
-#BiocManager::install("pathview")
 library(clusterProfiler)
-library(enrichplot)
-library(pathview)
-library(openxlsx)
+
+# analysis and visualization
 library(tidyverse)
-library(glue)
 library(patchwork)
 library(ggtext)
 library(cowplot)
@@ -47,8 +40,8 @@ library(cowplot)
 ```{r}
 path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/genes_GCI/'
 
-data <- read_csv(glue('{path_to_data}ecoli_full_pos_corr.csv'))
-neg_data <- read_csv(glue('{path_to_data}ecoli_full_neg_corr.csv'))
+data <- read_csv(glue::glue('{path_to_data}ecoli_full_pos_corr.csv'))
+neg_data <- read_csv(glue::glue('{path_to_data}ecoli_full_neg_corr.csv'))
 
 head(data)
 ```
@@ -79,9 +72,9 @@ neg_data$ENTREZID <- mapIds(org.EcK12.eg.db,
 
 ## Removing duplicates gene names
 ```{r}
-data <- distinct(data, gene_name, .keep_all= TRUE)
+data <- dplyr::distinct(data, gene_name, .keep_all= TRUE)
 
-neg_data <- distinct(neg_data, gene_name, .keep_all= TRUE)
+neg_data <- dplyr::distinct(neg_data, gene_name, .keep_all= TRUE)
 
 head(data)
 ```
@@ -234,9 +227,11 @@ fig_go_pos <- df_go_pos_gci %>%
   ggplot() +
   aes(x = odds_ratio, y = fct_reorder(labels, odds_ratio)) +
   geom_point(size = 3) +
-  scale_x_continuous(name = "Odds Ratio") +
+  geom_vline(xintercept = 1) +
+  #scale_x_continuous(name = "Odds Ratio") +
+  scale_x_log10(name = "Odds Ratio", limits = c(1, 30)) +
   scale_y_discrete(name = NULL) +
-  ggtitle("GO enrichment (GCI > 0)") +
+  ggtitle("GO enrichment (0 < GCI)") +
   theme_bw() 
 
 ```
@@ -244,47 +239,26 @@ fig_go_pos <- df_go_pos_gci %>%
 
 ```{r}
 
-label_inf <- tibble(
-  x = 12.5,
-  y = str_wrap("regulation of bacterial-type flagellum-dependent cell motility", 30),
-  lab = "Inf.",
-  infinite = TRUE
-)
-
 fig_go_neg <- df_go_neg_gci %>% 
   arrange(desc(odds_ratio)) %>% 
   slice(1:15) %>% 
   mutate(
-    labels = str_wrap(Description, 30),
-    infinite = case_when(odds_ratio != Inf ~ FALSE, odds_ratio == Inf ~ TRUE)
+    labels = str_wrap(Description, 30)
   ) %>% 
   ggplot() +
   geom_point(
     aes(
       x = odds_ratio, 
-      y = fct_reorder(labels, odds_ratio), 
-      color = infinite
+      y = fct_reorder(labels, odds_ratio)
     ),
     size = 3
   ) +
-  geom_richtext(
-    data = label_inf,
-    aes(
-      x = x,
-      y = y,
-      label = lab,
-      color = infinite,
-      label.color = NA
-    )
-  ) +
-  scale_x_continuous(name = "Odds Ratio", oob = scales::squish_infinite) +
+  geom_vline(xintercept = 1) +
+  #scale_x_continuous(name = "Odds Ratio") +
+  scale_x_log10(name = "Odds Ratio", limits = c(1, 30)) +
   scale_y_discrete(name = NULL) +
-  scale_color_manual(
-    values = c("black", "#009E73")
-  ) +
   ggtitle("GO enrichment (GCI < 0)") +
-  theme_bw() +
-  theme(legend.position = "none")
+  theme_bw() 
 
 ```
 
@@ -294,15 +268,15 @@ fig_go_neg <- df_go_neg_gci %>%
 
 path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/'
 
-meta_df <- read_tsv(glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'))
+meta_df <- read_tsv(glue::glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'))
 
-exp_df <- read_tsv(glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'))
+exp_df <- read_tsv(glue::glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'))
 
-full_df <- read_tsv(glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv')) %>% 
+full_df <- read_tsv(glue::glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv')) %>% 
   select(locus_tag, gene)
 
 core_df <- read_tsv(
-  file = glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
+  file = glue::glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
 ) %>% 
   select(`Gene Name`, `Note`)
 
@@ -351,7 +325,7 @@ t_test_results <- t.test(core_gci, access_gci)
 
 # create label data set
 ttest_text <- data.frame(
-  label = glue(
+  label = glue::glue(
     'p-value = {scales::scientific(
     t_test_results$p.value, digits = 3
     )}'),
@@ -406,7 +380,7 @@ path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Grow
 save_plot(
   file.path(
     path_to_figures,  
-    glue('fig_core_go_gci.png')   # file name
+    glue::glue('fig_core_go_gci.png')   # file name
   ),
   fig_6, 
   ncol = 1, 
