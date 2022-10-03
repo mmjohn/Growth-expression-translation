@@ -6,18 +6,21 @@ date: "12/2/2021"
 output: html_document
 ---
 
-This document is the R version of `4-explore_expression_and_growth.ipynb`, created for easier extension of the analysis and figures created by Adam.
+This document is the R version of `4-explore_expression_and_growth.ipynb`, created for easier extension of the analysis created by Adam.
 
 
 ```{r, message=FALSE}
 
 library(tidyverse)
+library(here)
 library(glue)
-library(pheatmap)
+#library(pheatmap)
 library(viridis)
 library(cowplot)
 library(ggtext)
 library(patchwork)
+#library(ggplotify)
+library(reshape2)
 
 ```
 
@@ -25,9 +28,6 @@ library(patchwork)
 ## Defining constants and save directories
 
 ```{r, message=FALSE}
-
-path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/'
-path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Manuscript/Figures'
 
 data_key <- tibble(
   set = c(
@@ -38,37 +38,37 @@ data_key <- tibble(
     'scer_prot'
   ),
   meta_file = c(
-    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli_SPARSE.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli_PROTEIN.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_metadata_scer_RNA.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_metadata_scer_PROTEIN.tsv')
+    here("Data", "processed_data", "processed_metadata_ecoli.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_PROTEIN.tsv"),
+    here("Data", "processed_data", "processed_metadata_scer_RNA.tsv"),
+    here("Data", "processed_data", "processed_metadata_scer_PROTEIN.tsv")
   ),
   expression_file = c(
-    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli_SPARSE.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli_PROTEIN.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_scer_RNA.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_scer_PROTEIN.tsv')
+    here("Data", "processed_data", "processed_expression_ecoli.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_PROTEIN.tsv"),
+    here("Data", "processed_data", "processed_expression_scer_RNA.tsv"),
+    here("Data", "processed_data", "processed_expression_scer_PROTEIN.tsv")
   ),
   summary_file = c(
-    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_ecoli_PROTEIN.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_scer_RNA.tsv'),
-    glue({path_to_data}, 'processed_data/', 'processed_expression_summary_scer_PROTEIN.tsv')
+    here("Data", "processed_data", "processed_expression_summary_ecoli.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli_PROTEIN.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_scer_RNA.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_scer_PROTEIN.tsv")
   ),
   cub_file = c(
-    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    glue({path_to_data}, 'scer_info/', 'current_scer_master_table.tsv'),
-    glue({path_to_data}, 'scer_info/', 'current_scer_master_table.tsv')
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "scer_info", "current_scer_master_table.tsv"),
+    here("Data", "scer_info", "current_scer_master_table.tsv")
   )
 )
 
 # select dataset for analysis
-data_tag <- "ecoli_full" 
+data_tag <- "ecoli_prot" #"ecoli_full" 
 
 ```
 
@@ -91,20 +91,20 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 full_df <- read_tsv(analysis_files$cub_file) %>% 
   select(locus_tag, gene)
 
-# get list of core genes
-core_df <- read_tsv(
-  file = glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
-) %>% 
-  select(`Gene Name`, `Note`)
-
-full_df <- full_df %>% 
-  mutate(
-    genome = case_when(
-      gene %in% core_df$`Gene Name` ~ "core",
-      TRUE ~ "accessory"
-    )) 
-
-rm(core_df)
+# # get list of core genes
+# core_df <- read_tsv(
+#   file = glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
+# ) %>% 
+#   select(`Gene Name`, `Note`)
+# 
+# full_df <- full_df %>% 
+#   mutate(
+#     genome = case_when(
+#       gene %in% core_df$`Gene Name` ~ "core",
+#       TRUE ~ "accessory"
+#     )) 
+# 
+# rm(core_df)
 
 ```
 
@@ -132,25 +132,38 @@ cond_cor_mat[1:4, 1:4]
 
 ```{r, message=FALSE}
 
-if (data_tag == "ecoli_full") {
-  box_size <- 2
-} else if (data_tag == "ecoli_sparse") {
-  box_size <- 6
-} else {
-  box_size <- 10
-}
+# if (data_tag == "ecoli_full") {
+#   box_size <- 2
+# } else if (data_tag == "ecoli_sparse") {
+#   box_size <- 6
+# } else {
+#   box_size <- 10
+# }
+
+#as_tibble(cond_cor_mat^2, rownames = NA) %>% View()
 
 # make heatmap for correlations across conditions
-fig_exp_cond_corr <- pheatmap::pheatmap(
-  cond_cor_mat^2, # visualize R^2 instead of Pearson's corr
-  color = inferno(100),
-  cellheight = box_size, 
-  cellwidth = box_size, 
-  border_color = NA,
-  show_rownames = FALSE,
-  show_colnames = FALSE,
-  clustering_method = "average"
-)
+fig_exp_cond_corr <- melt(cond_cor_mat^2) %>% 
+  ggplot(aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  coord_fixed() +
+  scale_fill_viridis_c(
+    option = "B", name = "*R*^2"
+  ) +
+  theme_void() +
+  theme(legend.title = element_markdown())
+
+
+# fig_exp_cond_corr <- pheatmap::pheatmap(
+#   cond_cor_mat^2, # visualize R^2 instead of Pearson's corr
+#   color = inferno(100),
+#   cellheight = box_size, 
+#   cellwidth = box_size, 
+#   border_color = NA,
+#   show_rownames = FALSE,
+#   show_colnames = FALSE,
+#   clustering_method = "average"
+# )
 
 #fig_exp_cond_corr
 
@@ -159,16 +172,16 @@ fig_exp_cond_corr <- pheatmap::pheatmap(
 
 ```{r, message=FALSE, include=FALSE, eval=FALSE}
 
-# visualize expression across conditions for each gene
-fig_cond_gene_exp <- pheatmap::pheatmap(
-  exp_df[, -1],
-  color = inferno(100),
-  show_rownames = FALSE,
-  show_colnames = FALSE,
-  clustering_method = "average"
-)
-
-#fig_cond_gene_exp
+# # visualize expression across conditions for each gene
+# fig_cond_gene_exp <- pheatmap::pheatmap(
+#   exp_df[, -1],
+#   color = inferno(100),
+#   show_rownames = FALSE,
+#   show_colnames = FALSE,
+#   clustering_method = "average"
+# )
+# 
+# fig_cond_gene_exp
 
 ```
 
@@ -230,16 +243,17 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
 fig_max <- max_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
   geom_point(color = "black", alpha = 0.3) +
+  #coord_fixed() +
   scale_x_continuous(
     limits = c(xy_min, xy_max), 
     expand = c(0.01, 0.01),
-    name = glue('Condition {inds[1]} (log TPM)')
+    name = glue('Condition {inds[1]} expression')
     # name = glue('Condition {inds[1]}: {max_names[1]}')
   ) +
   scale_y_continuous(
     limits = c(xy_min, xy_max),
     expand = c(0.02, 0.02),
-    name = glue('Condition {inds[2]} (log TPM)')
+    name = glue('Condition {inds[2]} expression')
   ) +
   geom_richtext(
     data = r2_max_text,
@@ -250,7 +264,12 @@ fig_max <- max_cond_corr_df %>%
   theme_half_open() +
   background_grid()
 
-#fig_max
+max_names
+# ecoli_full = "ytf__delydcI_ph5" "ytf__wt_ph5" 
+# ecoli_sparse = "ytf__delyiaJ" "ytf__delyeiE"
+# ecoli_prot = "Chemostat u=0.35" "Chemostat u=0.20"
+# scer_rna = "Gln_0.1_6.87_0.55" "NH4_0.1_7.5_0.5" 
+# scer_prot = "Ile_0.1_7.5_9.81" "NH4_0.05_7.5_0.5"
 
 ```
 
@@ -283,15 +302,16 @@ r2_min_text <- data.frame(
 fig_min <- min_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
   geom_point(color = "black", alpha = 0.3) +
+  #coord_fixed() +
   scale_x_continuous(
     limits = c(xy_min, xy_max),
     expand = c(0.01, 0.01),
-    name = glue('Condition {inds_min[1]} (log TPM)')
+    name = glue('Condition {inds_min[1]} expression')
   ) +
   scale_y_continuous(
     limits = c(xy_min, xy_max),
     expand = c(0.02, 0.02),
-    name = glue('Condition {inds_min[2]} (log TPM)')
+    name = glue('Condition {inds_min[2]} expression')
   ) +
   geom_richtext(
     data = r2_min_text,
@@ -304,6 +324,13 @@ fig_min <- min_cond_corr_df %>%
 
 #fig_min
 
+min_names
+# ecoli_full = "ica__cytd_rib" "ssw__glc_xyl_glc"
+# ecoli_spare = "ica__cytd_rib"    "ssw__glc_xyl_glc"
+# ecoli_prot = "pH6 glucose" "LB" 
+# scer_rna = "NH4_0.35_7.5_0.5" "NH4_0.05_7.5_0.5"
+# scer_prot = "Gln_0.1_7.5_5.53" "NH4_0.35_7.5_0.5"
+
 ```
 
 
@@ -313,9 +340,16 @@ fig_min <- min_cond_corr_df %>%
 # combine figures for subplot b
 fig_2b <- plot_grid(fig_max, fig_min, nrow = 2)
 
-# combine all figures
+# # combine all figures
+# fig_2 <- plot_grid(
+#   fig_exp_cond_corr[[4]], fig_2b, 
+#   nrow = 1,
+#   labels = "AUTO",
+#   scale = c(1, 0.85)
+# )
+
 fig_2 <- plot_grid(
-  fig_exp_cond_corr[[4]], fig_2b, 
+  fig_exp_cond_corr, fig_2b,
   nrow = 1,
   labels = "AUTO",
   scale = c(1, 0.85)
@@ -330,12 +364,20 @@ fig_2
 
 # needs white background due to transparency of heatmap and outer rectangle
 fig_2_fixed <- cowplot::ggdraw(fig_2) + 
-  theme(plot.background = element_rect(fill="white", color = NA))
+  theme(plot.background = element_rect(fill="white", color = NA)) # +
+  # annotate(
+  #   "text", 
+  #   x = .5, 
+  #   y = .825, 
+  #   label = "paste(italic(R)^2)", 
+  #   parse = TRUE
+  # )
 
 # save plot
 save_plot(
-  file.path(
-    path_to_figures, 
+  here(
+    "Manuscript",
+    "Figures",
     glue('fig_corr_{data_tag}.png')   # file name
   ),
   fig_2_fixed, 
@@ -359,64 +401,64 @@ rm(fig_exp_cond_corr, #fig_cond_gene_exp,
 rm(max_cond_corr_df, min_cond_corr_df, 
    r2_max_text, r2_min_text, test_mat,
    inds, inds_min, max_names, min_names,
-   x_pos, y_pos, xy_min, xy_max, box_size)
+   x_pos, y_pos, xy_min, xy_max)
 
 ```
 
 
-#### Gene expression vs various dispersion metrics - not included
+<!-- #### Gene expression vs various dispersion metrics - not included -->
 
-```{r, include=FALSE, eval=FALSE}
+<!-- ```{r, include=FALSE, eval=FALSE} -->
 
-# calculate mean expression and dispersion metrics
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
-  exp_metrics <- exp_df %>% 
-    rowwise() %>% 
-    mutate(
-      exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)),
-      exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38))
-    ) %>% 
-    select(`log-TPM`, exp_mean, exp_sd) %>%
-    mutate(exp_cv = exp_sd/exp_mean)
-  colnames(exp_metrics) <- c("gene", "exp_mean", "exp_sd", "exp_cv")
-}
+<!-- # calculate mean expression and dispersion metrics -->
+<!-- if (data_tag %in% c("ecoli_full", "ecoli_sparse")) { -->
+<!--   exp_metrics <- exp_df %>%  -->
+<!--     rowwise() %>%  -->
+<!--     mutate( -->
+<!--       exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)), -->
+<!--       exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)) -->
+<!--     ) %>%  -->
+<!--     select(`log-TPM`, exp_mean, exp_sd) %>% -->
+<!--     mutate(exp_cv = exp_sd/exp_mean) -->
+<!--   colnames(exp_metrics) <- c("gene", "exp_mean", "exp_sd", "exp_cv") -->
+<!-- } -->
 
 
-# calculate correlation of relationship between metrics
-spear_rho_sd <- cor(
-  exp_metrics$exp_mean, exp_metrics$exp_sd, 
-  method = "spearman"
-)
-spear_rho_cv <- cor(
-  exp_metrics$exp_mean, exp_metrics$exp_cv, 
-  method = "spearman"
-)
+<!-- # calculate correlation of relationship between metrics -->
+<!-- spear_rho_sd <- cor( -->
+<!--   exp_metrics$exp_mean, exp_metrics$exp_sd,  -->
+<!--   method = "spearman" -->
+<!-- ) -->
+<!-- spear_rho_cv <- cor( -->
+<!--   exp_metrics$exp_mean, exp_metrics$exp_cv,  -->
+<!--   method = "spearman" -->
+<!-- ) -->
 
-# visualize expression vs standard dev
-exp_metrics %>% 
-  ggplot(aes(x = exp_mean, y = exp_sd)) +
-  geom_point(alpha = 0.5) +
-  scale_x_continuous(name = "Expression mean") +
-  scale_y_continuous(name = "Standard deviation") +
-  labs(title = glue("Spearman's &rho; = {round(spear_rho_sd,4)}")) +
-  theme_bw() +
-  theme(plot.title = element_markdown())
+<!-- # visualize expression vs standard dev -->
+<!-- exp_metrics %>%  -->
+<!--   ggplot(aes(x = exp_mean, y = exp_sd)) + -->
+<!--   geom_point(alpha = 0.5) + -->
+<!--   scale_x_continuous(name = "Expression mean") + -->
+<!--   scale_y_continuous(name = "Standard deviation") + -->
+<!--   labs(title = glue("Spearman's &rho; = {round(spear_rho_sd,4)}")) + -->
+<!--   theme_bw() + -->
+<!--   theme(plot.title = element_markdown()) -->
 
-```
+<!-- ``` -->
 
-```{r, include=FALSE, eval=FALSE}
+<!-- ```{r, include=FALSE, eval=FALSE} -->
 
-# visualize expression vs coeff of var
-exp_metrics %>% 
-  ggplot(aes(x = exp_mean, y = exp_cv)) +
-  geom_point(alpha = 0.5) +
-  scale_x_continuous(name = "Expression mean") +
-  scale_y_continuous(name = "Coefficient of variation") +
-  labs(title = glue("Spearman's &rho; = {round(spear_rho_cv,4)}")) +
-  theme_bw() +
-  theme(plot.title = element_markdown())
+<!-- # visualize expression vs coeff of var -->
+<!-- exp_metrics %>%  -->
+<!--   ggplot(aes(x = exp_mean, y = exp_cv)) + -->
+<!--   geom_point(alpha = 0.5) + -->
+<!--   scale_x_continuous(name = "Expression mean") + -->
+<!--   scale_y_continuous(name = "Coefficient of variation") + -->
+<!--   labs(title = glue("Spearman's &rho; = {round(spear_rho_cv,4)}")) + -->
+<!--   theme_bw() + -->
+<!--   theme(plot.title = element_markdown()) -->
 
-```
+<!-- ``` -->
 
 
 ## Explore growth rate data
@@ -518,7 +560,7 @@ make_cor_plot <- function(x, gname) {
     ggplot() +
     aes(!!x, `Growth Rate (1/hr)`) +
     geom_point(alpha = 0.75) +
-    scale_x_continuous("Expression") +
+    scale_x_continuous("Expression across conditions") +
     theme_minimal_grid() +
     ggtitle(glue("{gname}"))
 }
@@ -554,11 +596,20 @@ fig_perm <- perm_df %>%
   ggplot() +
     aes(x = pearsons, fill = set) +
     geom_density(alpha = 0.5) +
-    scale_x_continuous(name = "Pearson's r (individual gene expression vs growth)") +
-    scale_y_continuous(name = "Count") +
-    scale_fill_discrete(labels = c("True data", "Shuffled data")) +
+    scale_x_continuous(
+      name = "Pearson's *r* (individual gene expression vs growth)<br />**GCI**"
+    ) +
+    scale_y_continuous(name = "Density") +
+    scale_fill_manual(
+      name = "",
+      labels = c("True data", "Shuffled data"),
+      values = c("#009E73", "#808080")
+    ) +
     theme_minimal_grid() +
-    theme(legend.position = "top")
+    theme(
+      legend.position = "top",
+      axis.title.x = element_markdown()
+    )
 
 #fig_perm
 
@@ -580,8 +631,9 @@ fig_4
 ```{r, include=FALSE, eval=FALSE}
 
 save_plot(
-  file.path(
-    path_to_figures,  
+  here(
+    "Manuscript",  
+    "Figures",
     glue('fig_gene_con_{data_tag}.png')   # file name
   ),
   fig_4, 
@@ -595,52 +647,52 @@ save_plot(
 ```
 
 
-## Explore properties of genes with high and low GCI
+<!-- ## Explore properties of genes with high and low GCI -->
 
-```{r, message=FALSE}
+<!-- ```{r, message=FALSE} -->
 
-exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes)
+<!-- exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes) -->
 
-gci_genomes_df <- exp_gr_corr %>% 
-  left_join(., full_df, by = c("genes" = "locus_tag"))
+<!-- gci_genomes_df <- exp_gr_corr %>%  -->
+<!--   left_join(., full_df, by = c("genes" = "locus_tag")) -->
 
-core_gci <- gci_genomes_df %>% 
-  filter(genome == "core") %>% 
-  select(pearsons)
+<!-- core_gci <- gci_genomes_df %>%  -->
+<!--   filter(genome == "core") %>%  -->
+<!--   select(pearsons) -->
 
-access_gci <- gci_genomes_df %>% 
-  filter(genome == "accessory") %>% 
-  select(pearsons)
+<!-- access_gci <- gci_genomes_df %>%  -->
+<!--   filter(genome == "accessory") %>%  -->
+<!--   select(pearsons) -->
 
-t_test_results <- t.test(core_gci, access_gci)
+<!-- t_test_results <- t.test(core_gci, access_gci) -->
 
-# create label data set
-ttest_text <- data.frame(
-  label = glue(
-    'p-value = {scales::scientific(
-    t_test_results$p.value, digits = 3
-    )}'),
-  x = 0.3, 
-  y = 1.4
-)
+<!-- # create label data set -->
+<!-- ttest_text <- data.frame( -->
+<!--   label = glue( -->
+<!--     'p-value = {scales::scientific( -->
+<!--     t_test_results$p.value, digits = 3 -->
+<!--     )}'), -->
+<!--   x = 0.3,  -->
+<!--   y = 1.4 -->
+<!-- ) -->
 
-fig_core_gci <- gci_genomes_df %>% 
-  drop_na(genome) %>% 
-  ggplot(aes(x = pearsons, fill = genome)) +
-  geom_density(alpha = 0.5) +
-  geom_richtext(
-    data = ttest_text,
-    aes(x = x, y = y, label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
-  scale_x_continuous(name = "GCI") +
-  scale_y_continuous(name = "Density") +
-  scale_fill_viridis_d(name = "Gene type") +
-  theme_minimal_grid()
+<!-- fig_core_gci <- gci_genomes_df %>%  -->
+<!--   drop_na(genome) %>%  -->
+<!--   ggplot(aes(x = pearsons, fill = genome)) + -->
+<!--   geom_density(alpha = 0.5) + -->
+<!--   geom_richtext( -->
+<!--     data = ttest_text, -->
+<!--     aes(x = x, y = y, label = label), -->
+<!--     label.color = NA, -->
+<!--     inherit.aes = FALSE -->
+<!--   ) + -->
+<!--   scale_x_continuous(name = "GCI") + -->
+<!--   scale_y_continuous(name = "Density") + -->
+<!--   scale_fill_viridis_d(name = "Gene type") + -->
+<!--   theme_minimal_grid() -->
 
 
-```
+<!-- ``` -->
 
 
 
