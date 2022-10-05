@@ -30,6 +30,8 @@ library(clusterProfiler)
 
 # analysis and visualization
 library(tidyverse)
+library(here)
+library(readxl)
 library(patchwork)
 library(ggtext)
 library(cowplot)
@@ -38,10 +40,9 @@ library(cowplot)
 
 ## Load data
 ```{r}
-path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/genes_GCI/'
 
-data <- read_csv(glue::glue('{path_to_data}ecoli_full_pos_corr.csv'))
-neg_data <- read_csv(glue::glue('{path_to_data}ecoli_full_neg_corr.csv'))
+data <- read_csv(here('Data', 'genes_GCI', 'ecoli_full_pos_corr.csv'))
+neg_data <- read_csv(here('Data', 'genes_GCI', 'ecoli_full_neg_corr.csv'))
 
 head(data)
 ```
@@ -76,7 +77,6 @@ data <- dplyr::distinct(data, gene_name, .keep_all= TRUE)
 
 neg_data <- dplyr::distinct(neg_data, gene_name, .keep_all= TRUE)
 
-head(data)
 ```
 
 
@@ -231,7 +231,7 @@ fig_go_pos <- df_go_pos_gci %>%
   #scale_x_continuous(name = "Odds Ratio") +
   scale_x_log10(name = "Odds Ratio", limits = c(1, 30)) +
   scale_y_discrete(name = NULL) +
-  ggtitle("GO enrichment (0 < GCI)") +
+  ggtitle("GO enrichment (GCI > 0)") +
   theme_bw() 
 
 ```
@@ -262,32 +262,71 @@ fig_go_neg <- df_go_neg_gci %>%
 
 ```
 
+```{r}
+rm(data, neg_data, mtx, n_mtx, go_enrich_ALL, go_enrich_ALL_neg)
+```
 
-## Add in core vs accessory analysis
+
+
+## Add in essential vs non-essential / core vs accessory analysis
 ```{r}
 
-path_to_data <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Data/'
+meta_df <- read_tsv(here('Data', 'processed_data', 'processed_metadata_ecoli.tsv'))
 
-meta_df <- read_tsv(glue::glue({path_to_data}, 'processed_data/', 'processed_metadata_ecoli.tsv'))
+exp_df <- read_tsv(here('Data', 'processed_data', 'processed_expression_ecoli.tsv'))
 
-exp_df <- read_tsv(glue::glue({path_to_data}, 'processed_data/', 'processed_expression_ecoli.tsv'))
-
-full_df <- read_tsv(glue::glue({path_to_data}, 'ecoli_info/', 'current_ecoli_master_table.tsv')) %>% 
+full_df <- read_tsv(here('Data', 'ecoli_info', 'current_ecoli_master_table.tsv')) %>% 
   select(locus_tag, gene)
 
-core_df <- read_tsv(
-  file = glue::glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
+# essential gene data set with unknown Adam origins
+core_df1 <- read_tsv(
+  file = here('Data', 'ecoli_info', 'essential_ecoli_genes.txt')
 ) %>% 
   select(`Gene Name`, `Note`)
 
+# essential gene data set from supp table 7
+core_df2 <- read_excel(
+  here( 'Data', 'ecoli_info', 'keio_supp_table_7.xls'),
+  range = cell_rows(3:4013),
+  col_names = c("keio_results", "eck_num", "gene_name", "jw_id", "locus_tag", "cog_id", "cog_cat")
+) %>% 
+  filter(keio_results == "E") %>% # keep only essential genes
+  select(keio_results, gene_name, locus_tag)
+  
+# # essential gene data set from supp table 3
+# #core_df3 - could add this in to distinguish essential in rich vs minimal environment - 'keio_supp_table_3.xls'
+# core_df3 <- read_excel(
+#   glue::glue(
+#     {path_to_data}, 'ecoli_info/', 'keio_supp_table_3.xls'
+#   ))
+
+# actual core analysis
+core_df4 <- 
+  read_csv(
+    here('Data', 'ecoli_info', 'gene_presence_absence.csv')
+  ) %>% 
+  filter(`No. isolates` == 60) %>% # 2,449
+  filter(`Annotation` != "hypothetical protein") %>%  # 2, 197
+  select(`Gene`)
+
+# add gene classifications into data set
 full_df <- full_df %>% 
   mutate(
-    genome = case_when(
-      gene %in% core_df$`Gene Name` ~ "core",
+    core1 = case_when(
+      gene %in% core_df1$`Gene Name` ~ "essential",
+      TRUE ~ "non-essential"
+    ),
+    core2 = case_when(
+      gene %in% core_df2$gene_name ~ "essential",
+      TRUE ~ "non-essential"
+    ),
+    core4 = case_when(
+      gene %in% core_df4$`Gene` ~ "core",
       TRUE ~ "accessory"
-    )) 
+    )
+  ) 
 
-rm(core_df)
+rm(core_df1, core_df2, core_df4)
 
 exp_gr_df <- exp_df %>% 
     gather(-`log-TPM`,
@@ -299,30 +338,62 @@ exp_gr_df <- meta_df %>%
     select(`Simple_sample_id`, `Growth Rate (1/hr)`) %>% 
     inner_join(., exp_gr_df, by = c("Simple_sample_id" = "condition"))
 
-exp_gr_corr <- cor(exp_gr_df[2], exp_gr_df[3:ncol(exp_gr_df)], method = "pearson") %>% 
-   as_tibble() %>% 
-   gather(
-     .,
-     key = "genes",
-     value = "pearsons"
-    ) %>%
-   mutate(r2 = pearsons^2)
+exp_gr_corr <- cor(
+  exp_gr_df[2], 
+  exp_gr_df[3:ncol(exp_gr_df)], 
+  method = "pearson"
+) %>% 
+  as_tibble() %>% 
+  gather(
+    .,
+    key = "genes",
+    value = "pearsons"
+  ) %>%
+  mutate(r2 = pearsons^2)
 
 exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes)
 
+# join all data for gene classification and gci values
 gci_genomes_df <- exp_gr_corr %>% 
   left_join(., full_df, by = c("genes" = "locus_tag"))
 
-core_gci <- gci_genomes_df %>% 
-  filter(genome == "core") %>% 
+# data set 1
+core_gci1 <- gci_genomes_df %>% 
+  filter(core1 == "essential") %>% 
   select(pearsons)
 
-access_gci <- gci_genomes_df %>% 
-  filter(genome == "accessory") %>% 
+access_gci1 <- gci_genomes_df %>% 
+  filter(core1 == "non-essential") %>% 
   select(pearsons)
 
-t_test_results <- t.test(core_gci, access_gci)
+t_test_results <- t.test(core_gci1, access_gci1)
+t_test_results$p.value  # 4.434505e-44
 
+# data set 2
+core_gci2 <- gci_genomes_df %>% 
+  filter(core2 == "essential") %>% 
+  select(pearsons)
+
+access_gci2 <- gci_genomes_df %>% 
+  filter(core2 == "non-essential") %>% 
+  select(pearsons)
+
+t_test_results2 <- t.test(core_gci2, access_gci2)
+t_test_results2$p.value  # 2.488719e-36
+
+# data set 4
+core_gci4 <- gci_genomes_df %>% 
+  filter(core4 == "core") %>% 
+  select(pearsons)
+
+access_gci4 <- gci_genomes_df %>% 
+  filter(core4 == "accessory") %>% 
+  select(pearsons)
+
+t_test_results4 <- t.test(core_gci4, access_gci4)
+t_test_results4$p.value  # 3.252126e-65
+
+# use essential data set from Adam in figure
 # create label data set
 ttest_text <- data.frame(
   label = glue::glue(
@@ -334,8 +405,8 @@ ttest_text <- data.frame(
 )
 
 fig_core_gci <- gci_genomes_df %>% 
-  drop_na(genome) %>% 
-  ggplot(aes(x = pearsons, fill = genome)) +
+  drop_na(core1) %>% 
+  ggplot(aes(x = pearsons, fill = core1)) +
   geom_density(alpha = 0.5) +
   geom_richtext(
     data = ttest_text,
@@ -347,6 +418,9 @@ fig_core_gci <- gci_genomes_df %>%
   scale_y_continuous(name = "Density") +
   scale_fill_viridis_d(name = "Gene type") +
   theme_minimal_grid()
+
+
+
 
 ```
 
@@ -373,15 +447,10 @@ fig_6
 ```
 
 
-```{r, eval=FALSE}
-
-path_to_figures <- '/Users/mackenziejohnson/Documents/grad_school/wilke_lab/Growth-expression-translation/Manuscript/Figures'
+```{r, include=FALSE, eval=FALSE}
 
 save_plot(
-  file.path(
-    path_to_figures,  
-    glue::glue('fig_core_go_gci.png')   # file name
-  ),
+  here('Manuscript', 'Figures', 'fig_core_go_gci.png'),
   fig_6, 
   ncol = 1, 
   nrow = 1, 

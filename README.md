@@ -11,3 +11,5 @@ Transcript abundance data: https://www.nature.com/articles/s41467-019-13483-w
 tRNA adaptation index: https://genominfo.org/journal/view.php?doi=10.5808/GI.2018.16.4.e28
 
 
+## **E. coli** core genome
+The scripts to generate a list of 'core' genes can be found here: https://github.com/mmcguffi/E_coli_core_genome
