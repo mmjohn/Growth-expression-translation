@@ -71,7 +71,7 @@ data_key <- tibble(
 
 # select dataset for analysis
 data_tag <- "ecoli_full" 
-metric <- "tAI" #"CAI" 
+metric <- "CAI" #"CAI" 
 
 ```
 
@@ -286,6 +286,17 @@ fig_corr_grow <- meta_df %>%
     theme_minimal_grid() +
     theme(axis.title.y = element_markdown())
 
+# get spearmans corr
+growth_cai_df <- meta_df %>% 
+  select(Simple_sample_id, `Growth Rate (1/hr)`) %>% 
+  inner_join(., exp_cub_corr, by = c("Simple_sample_id" = "condition"))
+
+cor.test(
+  x = growth_cai_df$`Growth Rate (1/hr)`, 
+  y = growth_cai_df$r2, 
+  method = 'spearman'
+)
+
 
 ```
 
@@ -462,6 +473,14 @@ rm(fig_corr_max, fig_corr_min, fig_corr_grow, fig_gr_hist,
 
 
 ## Regression analysis to assess predictors of CUB
+
+```{r}
+cor(full_df$mean, full_df$lin_r, method = 'pearson')
+0.370575*0.370575
+cor(full_df$CAI, full_df$lin_r, method = 'pearson')
+0.4313216*0.4313216
+```
+
 
 ```{r, message=FALSE}
 

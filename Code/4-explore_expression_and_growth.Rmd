@@ -68,7 +68,7 @@ data_key <- tibble(
 )
 
 # select dataset for analysis
-data_tag <- "ecoli_prot" #"ecoli_full" 
+data_tag <- "ecoli_full" #"ecoli_full" 
 
 ```
 
@@ -412,17 +412,18 @@ rm(max_cond_corr_df, min_cond_corr_df,
 
 <!-- # calculate mean expression and dispersion metrics -->
 <!-- if (data_tag %in% c("ecoli_full", "ecoli_sparse")) { -->
-<!--   exp_metrics <- exp_df %>%  -->
-<!--     rowwise() %>%  -->
+<!--   exp_metrics <- exp_df %>% -->
+<!--     rowwise() %>% -->
 <!--     mutate( -->
 <!--       exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)), -->
 <!--       exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)) -->
-<!--     ) %>%  -->
+<!--     ) %>% -->
 <!--     select(`log-TPM`, exp_mean, exp_sd) %>% -->
 <!--     mutate(exp_cv = exp_sd/exp_mean) -->
 <!--   colnames(exp_metrics) <- c("gene", "exp_mean", "exp_sd", "exp_cv") -->
 <!-- } -->
 
+<!-- ``` -->
 
 <!-- # calculate correlation of relationship between metrics -->
 <!-- spear_rho_sd <- cor( -->
