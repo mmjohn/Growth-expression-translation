@@ -107,17 +107,29 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 ```{r, message=FALSE}
 
 if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
-  full_df <- inner_join(full_df, exp_sum_df, by = c("locus_tag" = "log-TPM"))
+  full_df <- inner_join(
+    full_df, 
+    exp_sum_df, 
+    by = c("locus_tag" = "log-TPM")
+  )
   rm(exp_sum_df)
 } else if (data_tag == "ecoli_prot") {
-  full_df <- inner_join(full_df, exp_sum_df, by = c("gene" = "Gene"))
+  full_df <- inner_join(
+    full_df, 
+    exp_sum_df, 
+    by = c("gene" = "Gene")
+  )
   rm(exp_sum_df)
 } else {
   full_df <- full_df %>% 
     filter(gene != "hypothetical protein") %>% 
     mutate(gene = str_sub(.$gene, start = 1, end = -2)) 
   full_df$gene <- toupper(full_df$gene)
-  full_df<- inner_join(full_df, exp_sum_df, by = c("gene" = "Gene"))
+  full_df<- inner_join(
+    full_df, 
+    exp_sum_df, 
+    by = c("gene" = "Gene")
+  )
   rm(exp_sum_df)
 }
 
@@ -763,6 +775,38 @@ save_plot(
   ncol = 1, 
   nrow = 1, 
   base_height = 6.71, #base_height = 5.71,
+  base_asp = 1.618, 
+  base_width = NULL
+)
+
+```
+
+
+```{r, include=FALSE, eval=FALSE}
+
+fig_5_sup <- full_df %>% 
+  ggplot(aes(x = lin_r, y = CAI)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(
+    method = "lm", 
+    se = FALSE,
+    color = "#CC4678FF"
+  ) +
+  scale_x_continuous(name = "GCI") +
+  theme_half_open() +
+  background_grid() +
+  theme(plot.background = element_rect(fill="white", color = NA))
+
+save_plot(
+  here(
+    'Manuscript', 
+    'Figures',
+    glue('fig_{metric}_gci_linear.png')   # file name
+  ),
+  fig_5_sup, 
+  ncol = 1, 
+  nrow = 1, 
+  base_height = 4.71, #base_height = 5.71,
   base_asp = 1.618, 
   base_width = NULL
 )
