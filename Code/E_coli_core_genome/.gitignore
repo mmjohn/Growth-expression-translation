@@ -1,0 +1,7 @@
+.ipynb_checkpoints
+.pytest_cache
+.DS_Store
+out_data/annotations
+out_data/genomes
+out_data/gffs
+out_data/roary_out
