@@ -11,7 +11,7 @@
 
 `2-compile_gene_metrics.ipynb`: compiles codon usage bias metrics (CAI, tAI, ROC SEMPPR) for *E. coli* and *S. cerevisiae* genes.
 
-`3-explore_expression_and_growth.Rmd`: examines correlation between conditions and correlations between expressiona and growth rate for all data sets. Produces Figures 2 and 4 using the full *E. coli* transcript data set, and Supplementary Figures S4-S8 on the remaining data sets.
+`3-explore_expression_and_growth.Rmd`: examines correlation between conditions and correlations between expression and growth rate for all data sets. Produces Figures 2 and 4 using the full *E. coli* transcript data set, and Supplementary Figures S4-S8 on the remaining data sets.
 
 `4-explore_cub_predictors.Rmd`: examines correlation between expression and CUB, and includes a regression analysis to evaluate predictors of CUB (expression, GCI, and combos). Produces Figure 3 and 5 using the full *E. coli* transcript data set and CAI metric, and Supplementary Figures S1-S3 and S9-13 on the remaining CUB metrics and data sets.
 
