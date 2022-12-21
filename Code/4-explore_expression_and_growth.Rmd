@@ -31,6 +31,7 @@ data_key <- tibble(
   set = c(
     'ecoli_full', 
     'ecoli_sparse', 
+    'ecoli_neutral',
     'ecoli_prot',
     'scer_rna', 
     'scer_prot'
@@ -38,6 +39,7 @@ data_key <- tibble(
   meta_file = c(
     here("Data", "processed_data", "processed_metadata_ecoli.tsv"),
     here("Data", "processed_data", "processed_metadata_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_NEUTRAL.tsv"),
     here("Data", "processed_data", "processed_metadata_ecoli_PROTEIN.tsv"),
     here("Data", "processed_data", "processed_metadata_scer_RNA.tsv"),
     here("Data", "processed_data", "processed_metadata_scer_PROTEIN.tsv")
@@ -45,6 +47,7 @@ data_key <- tibble(
   expression_file = c(
     here("Data", "processed_data", "processed_expression_ecoli.tsv"),
     here("Data", "processed_data", "processed_expression_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_NEUTRAL.tsv"),
     here("Data", "processed_data", "processed_expression_ecoli_PROTEIN.tsv"),
     here("Data", "processed_data", "processed_expression_scer_RNA.tsv"),
     here("Data", "processed_data", "processed_expression_scer_PROTEIN.tsv")
@@ -52,11 +55,13 @@ data_key <- tibble(
   summary_file = c(
     here("Data", "processed_data", "processed_expression_summary_ecoli.tsv"),
     here("Data", "processed_data", "processed_expression_summary_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli.tsv"),
     here("Data", "processed_data", "processed_expression_summary_ecoli_PROTEIN.tsv"),
     here("Data", "processed_data", "processed_expression_summary_scer_RNA.tsv"),
     here("Data", "processed_data", "processed_expression_summary_scer_PROTEIN.tsv")
   ),
   cub_file = c(
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
     here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
     here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
     here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
@@ -97,7 +102,7 @@ full_df <- read_tsv(analysis_files$cub_file) %>%
 ```{r, message=FALSE}
 
 # get pearson's correlation coefficient for gene expression between all conditions
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   cond_cor_mat <- exp_df %>% 
     select(-`log-TPM`) %>% 
     cor(., method = "pearson")
@@ -147,7 +152,7 @@ max_names <- colnames(max_cond_corr_df)
 colnames(max_cond_corr_df) <- c("cond1", "cond2")
 
 # store position for R^2 values in plot
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   x_pos = 3
   y_pos = 13.5
 } else if (data_tag == "ecoli_prot") {
@@ -171,7 +176,7 @@ r2_max_text <- data.frame(
 )
 
 # store axes limits
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   xy_min <- 0
   xy_max <- 15
 } else if (data_tag %in% c("ecoli_prot", "scer_prot")) {
@@ -210,6 +215,7 @@ fig_max <- max_cond_corr_df %>%
 max_names
 # ecoli_full = "ytf__delydcI_ph5" "ytf__wt_ph5" 
 # ecoli_sparse = "ytf__delyiaJ" "ytf__delyeiE"
+# ecoli_neutral = "ytf__wt_ph5" "ytf__delydcI_ph5"
 # ecoli_prot = "Chemostat u=0.35" "Chemostat u=0.20"
 # scer_rna = "Gln_0.1_6.87_0.55" "NH4_0.1_7.5_0.5" 
 # scer_prot = "Ile_0.1_7.5_9.81" "NH4_0.05_7.5_0.5"
@@ -269,7 +275,8 @@ fig_min <- min_cond_corr_df %>%
 
 min_names
 # ecoli_full = "ica__cytd_rib" "ssw__glc_xyl_glc"
-# ecoli_spare = "ica__cytd_rib"    "ssw__glc_xyl_glc"
+# ecoli_spare = "ica__cytd_rib" "ssw__glc_xyl_glc"
+# ecoli_neutral = "ssw__wt_xyl" "ica__cytd_rib"
 # ecoli_prot = "pH6 glucose" "LB" 
 # scer_rna = "NH4_0.35_7.5_0.5" "NH4_0.05_7.5_0.5"
 # scer_prot = "Gln_0.1_7.5_5.53" "NH4_0.35_7.5_0.5"
@@ -374,7 +381,7 @@ I'm only doing a single randomization/permutation here, and it should of course 
 
 ```{r, message=FALSE}
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   exp_gr_df <- exp_df %>% 
     gather(-`log-TPM`,
            key = "condition",
@@ -446,6 +453,11 @@ if (data_tag == "ecoli_full") {
   
   fig_ant_cor <- make_cor_plot(b3586, "yiaV")
   fig_pos_cor <- make_cor_plot(b0170, "tsf")
+  
+} else if (data_tag == "ecoli_neutral") {
+  
+  fig_ant_cor <- make_cor_plot(b2106, "rcnA")
+  fig_pos_cor <- make_cor_plot(b0154, "hemL")
   
 } else if (data_tag == "ecoli_prot") {
   
@@ -519,60 +531,10 @@ save_plot(
 ```
 
 
-<!-- ## Explore properties of genes with high and low GCI -->
-
-<!-- ```{r, message=FALSE} -->
-
-<!-- exp_gr_corr$genes <- gsub("_[0-9]", "", exp_gr_corr$genes) -->
-
-<!-- gci_genomes_df <- exp_gr_corr %>%  -->
-<!--   left_join(., full_df, by = c("genes" = "locus_tag")) -->
-
-<!-- core_gci <- gci_genomes_df %>%  -->
-<!--   filter(genome == "core") %>%  -->
-<!--   select(pearsons) -->
-
-<!-- access_gci <- gci_genomes_df %>%  -->
-<!--   filter(genome == "accessory") %>%  -->
-<!--   select(pearsons) -->
-
-<!-- t_test_results <- t.test(core_gci, access_gci) -->
-
-<!-- # create label data set -->
-<!-- ttest_text <- data.frame( -->
-<!--   label = glue( -->
-<!--     'p-value = {scales::scientific( -->
-<!--     t_test_results$p.value, digits = 3 -->
-<!--     )}'), -->
-<!--   x = 0.3,  -->
-<!--   y = 1.4 -->
-<!-- ) -->
-
-<!-- fig_core_gci <- gci_genomes_df %>%  -->
-<!--   drop_na(genome) %>%  -->
-<!--   ggplot(aes(x = pearsons, fill = genome)) + -->
-<!--   geom_density(alpha = 0.5) + -->
-<!--   geom_richtext( -->
-<!--     data = ttest_text, -->
-<!--     aes(x = x, y = y, label = label), -->
-<!--     label.color = NA, -->
-<!--     inherit.aes = FALSE -->
-<!--   ) + -->
-<!--   scale_x_continuous(name = "GCI") + -->
-<!--   scale_y_continuous(name = "Density") + -->
-<!--   scale_fill_viridis_d(name = "Gene type") + -->
-<!--   theme_minimal_grid() -->
-
-
-<!-- ``` -->
-
-
-
-
 #### Save gene GCI data for use in GO analysis
 ```{r, message=FALSE, eval=FALSE}
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   
   genes_positive <- exp_gr_corr %>% 
     filter(pearsons > 0) %>% 
@@ -616,4 +578,8 @@ write_csv(
 
 ```
 
+### Session Info
+```{r}
+sessionInfo()
+```
 

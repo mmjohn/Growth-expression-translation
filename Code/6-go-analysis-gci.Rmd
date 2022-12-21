@@ -292,13 +292,6 @@ core_df2 <- read_excel(
 ) %>% 
   filter(keio_results == "E") %>% # keep only essential genes
   select(keio_results, gene_name, locus_tag)
-  
-# # essential gene data set from supp table 3
-# #core_df3 - could add this in to distinguish essential in rich vs minimal environment - 'keio_supp_table_3.xls'
-# core_df3 <- read_excel(
-#   glue::glue(
-#     {path_to_data}, 'ecoli_info/', 'keio_supp_table_3.xls'
-#   ))
 
 # actual core analysis
 core_df4 <- 
@@ -423,7 +416,6 @@ fig_core_gci <- gci_genomes_df %>%
 
 
 ```
-
 
 
 ## Figure for core and GO analysis

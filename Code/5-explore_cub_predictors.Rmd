@@ -33,11 +33,13 @@ data_key <- tibble(
   set = c(
     'ecoli_full', 
     'ecoli_sparse', 
+    'ecoli_neutral',
     'ecoli_prot',
     'scer_rna', 
     'scer_prot'
   ),
   cub_file = c(
+    here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
     here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
     here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
     here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
@@ -47,6 +49,7 @@ data_key <- tibble(
   meta_file = c(
     here('Data', 'processed_data/', 'processed_metadata_ecoli.tsv'),
     here('Data', 'processed_data/', 'processed_metadata_ecoli_SPARSE.tsv'),
+    here('Data', 'processed_data/', 'processed_metadata_ecoli_NEUTRAL.tsv'),
     here('Data', 'processed_data/', 'processed_metadata_ecoli_PROTEIN.tsv'),
     here('Data', 'processed_data/', 'processed_metadata_scer_RNA.tsv'),
     here('Data', 'processed_data/', 'processed_metadata_scer_PROTEIN.tsv')
@@ -54,12 +57,14 @@ data_key <- tibble(
   expression_file = c(
     here('Data', 'processed_data/', 'processed_expression_ecoli.tsv'),
     here('Data', 'processed_data/', 'processed_expression_ecoli_SPARSE.tsv'),
+    here('Data', 'processed_data/', 'processed_expression_ecoli_NEUTRAL.tsv'),
     here('Data', 'processed_data/', 'processed_expression_ecoli_PROTEIN.tsv'),
     here('Data', 'processed_data/', 'processed_expression_scer_RNA.tsv'),
     here('Data', 'processed_data/', 'processed_expression_scer_PROTEIN.tsv')
   ),
   summary_file = c(
     here('Data', 'processed_data/', 'processed_expression_summary_ecoli.tsv'),
+    here('Data', 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
     here('Data', 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
     here('Data', 'processed_data/', 'processed_expression_summary_ecoli_PROTEIN.tsv'),
     here('Data', 'processed_data/', 'processed_expression_summary_scer_RNA.tsv'),
@@ -106,7 +111,7 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```{r, message=FALSE}
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   full_df <- inner_join(
     full_df, 
     exp_sum_df, 
@@ -168,7 +173,21 @@ if (data_tag == "ecoli_full") {
       value = "pearsons"
     ) %>% 
     mutate(r2 = pearsons^2)
-}  else if (data_tag == "ecoli_prot") {
+} else if (data_tag == "ecoli_neutral") {
+  # get df
+  corr_df <- full_df %>% 
+    select(locus_tag, CAI) %>% 
+    left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:50], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
+} else if (data_tag == "ecoli_prot") {
   # get df
   corr_df <- full_df %>% 
     select(gene, CAI) %>% 
@@ -203,7 +222,7 @@ min_corr <- exp_cub_corr %>%
 max_corr <- exp_cub_corr %>% 
   filter(r2 == max(r2))
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
   
   fig_corr_min <- corr_df %>% 
     ggplot() +
@@ -311,7 +330,7 @@ cor.test(
 ```
 
 
-```{r, include=FALSE, eval=FALSE}
+```{r, eval=FALSE}
 # tAI version
 
 if (metric == "tAI") {
@@ -419,7 +438,6 @@ if (metric == "roc_semppr_mean") {
       theme(axis.title.y = element_markdown())
   
 } 
-
 
 ```
 
@@ -1133,6 +1151,11 @@ save_plot(
   base_width = NULL
 )
 
+```
+
+### Session Info
+```{r}
+sessionInfo()
 ```
 
 
