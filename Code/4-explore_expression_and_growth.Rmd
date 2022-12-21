@@ -14,12 +14,10 @@ This document is the R version of `4-explore_expression_and_growth.ipynb`, creat
 library(tidyverse)
 library(here)
 library(glue)
-#library(pheatmap)
 library(viridis)
 library(cowplot)
 library(ggtext)
 library(patchwork)
-#library(ggplotify)
 library(reshape2)
 
 ```
@@ -91,21 +89,6 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 full_df <- read_tsv(analysis_files$cub_file) %>% 
   select(locus_tag, gene)
 
-# # get list of core genes
-# core_df <- read_tsv(
-#   file = glue({path_to_data}, 'ecoli_info/', 'essential_ecoli_genes.txt')
-# ) %>% 
-#   select(`Gene Name`, `Note`)
-# 
-# full_df <- full_df %>% 
-#   mutate(
-#     genome = case_when(
-#       gene %in% core_df$`Gene Name` ~ "core",
-#       TRUE ~ "accessory"
-#     )) 
-# 
-# rm(core_df)
-
 ```
 
 
@@ -132,16 +115,6 @@ cond_cor_mat[1:4, 1:4]
 
 ```{r, message=FALSE}
 
-# if (data_tag == "ecoli_full") {
-#   box_size <- 2
-# } else if (data_tag == "ecoli_sparse") {
-#   box_size <- 6
-# } else {
-#   box_size <- 10
-# }
-
-#as_tibble(cond_cor_mat^2, rownames = NA) %>% View()
-
 # make heatmap for correlations across conditions
 fig_exp_cond_corr <- melt(cond_cor_mat^2) %>% 
   ggplot(aes(x = Var1, y = Var2, fill = value)) +
@@ -152,36 +125,6 @@ fig_exp_cond_corr <- melt(cond_cor_mat^2) %>%
   ) +
   theme_void() +
   theme(legend.title = element_markdown())
-
-
-# fig_exp_cond_corr <- pheatmap::pheatmap(
-#   cond_cor_mat^2, # visualize R^2 instead of Pearson's corr
-#   color = inferno(100),
-#   cellheight = box_size, 
-#   cellwidth = box_size, 
-#   border_color = NA,
-#   show_rownames = FALSE,
-#   show_colnames = FALSE,
-#   clustering_method = "average"
-# )
-
-#fig_exp_cond_corr
-
-```
-
-
-```{r, message=FALSE, include=FALSE, eval=FALSE}
-
-# # visualize expression across conditions for each gene
-# fig_cond_gene_exp <- pheatmap::pheatmap(
-#   exp_df[, -1],
-#   color = inferno(100),
-#   show_rownames = FALSE,
-#   show_colnames = FALSE,
-#   clustering_method = "average"
-# )
-# 
-# fig_cond_gene_exp
 
 ```
 
@@ -340,14 +283,6 @@ min_names
 # combine figures for subplot b
 fig_2b <- plot_grid(fig_max, fig_min, nrow = 2)
 
-# # combine all figures
-# fig_2 <- plot_grid(
-#   fig_exp_cond_corr[[4]], fig_2b, 
-#   nrow = 1,
-#   labels = "AUTO",
-#   scale = c(1, 0.85)
-# )
-
 fig_2 <- plot_grid(
   fig_exp_cond_corr, fig_2b,
   nrow = 1,
@@ -364,14 +299,7 @@ fig_2
 
 # needs white background due to transparency of heatmap and outer rectangle
 fig_2_fixed <- cowplot::ggdraw(fig_2) + 
-  theme(plot.background = element_rect(fill="white", color = NA)) # +
-  # annotate(
-  #   "text", 
-  #   x = .5, 
-  #   y = .825, 
-  #   label = "paste(italic(R)^2)", 
-  #   parse = TRUE
-  # )
+  theme(plot.background = element_rect(fill="white", color = NA)) 
 
 # save plot
 save_plot(
@@ -394,72 +322,15 @@ save_plot(
 ```{r, message=FALSE, include=FALSE}
 
 # remove intermediate plots from memory
-rm(fig_exp_cond_corr, #fig_cond_gene_exp, 
-   fig_max, fig_min, fig_2b, fig_2)
+rm(fig_exp_cond_corr, fig_max, fig_min, fig_2b, fig_2)
 
-# remove unneccessary data frames and values
+# remove unnecessary data frames and values
 rm(max_cond_corr_df, min_cond_corr_df, 
    r2_max_text, r2_min_text, test_mat,
    inds, inds_min, max_names, min_names,
    x_pos, y_pos, xy_min, xy_max)
 
 ```
-
-
-<!-- #### Gene expression vs various dispersion metrics - not included -->
-
-<!-- ```{r, include=FALSE, eval=FALSE} -->
-
-<!-- # calculate mean expression and dispersion metrics -->
-<!-- if (data_tag %in% c("ecoli_full", "ecoli_sparse")) { -->
-<!--   exp_metrics <- exp_df %>% -->
-<!--     rowwise() %>% -->
-<!--     mutate( -->
-<!--       exp_mean = mean(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)), -->
-<!--       exp_sd = sd(c_across(fur__wt_fe:efeU__menFentCubiC_ale38)) -->
-<!--     ) %>% -->
-<!--     select(`log-TPM`, exp_mean, exp_sd) %>% -->
-<!--     mutate(exp_cv = exp_sd/exp_mean) -->
-<!--   colnames(exp_metrics) <- c("gene", "exp_mean", "exp_sd", "exp_cv") -->
-<!-- } -->
-
-<!-- ``` -->
-
-<!-- # calculate correlation of relationship between metrics -->
-<!-- spear_rho_sd <- cor( -->
-<!--   exp_metrics$exp_mean, exp_metrics$exp_sd,  -->
-<!--   method = "spearman" -->
-<!-- ) -->
-<!-- spear_rho_cv <- cor( -->
-<!--   exp_metrics$exp_mean, exp_metrics$exp_cv,  -->
-<!--   method = "spearman" -->
-<!-- ) -->
-
-<!-- # visualize expression vs standard dev -->
-<!-- exp_metrics %>%  -->
-<!--   ggplot(aes(x = exp_mean, y = exp_sd)) + -->
-<!--   geom_point(alpha = 0.5) + -->
-<!--   scale_x_continuous(name = "Expression mean") + -->
-<!--   scale_y_continuous(name = "Standard deviation") + -->
-<!--   labs(title = glue("Spearman's &rho; = {round(spear_rho_sd,4)}")) + -->
-<!--   theme_bw() + -->
-<!--   theme(plot.title = element_markdown()) -->
-
-<!-- ``` -->
-
-<!-- ```{r, include=FALSE, eval=FALSE} -->
-
-<!-- # visualize expression vs coeff of var -->
-<!-- exp_metrics %>%  -->
-<!--   ggplot(aes(x = exp_mean, y = exp_cv)) + -->
-<!--   geom_point(alpha = 0.5) + -->
-<!--   scale_x_continuous(name = "Expression mean") + -->
-<!--   scale_y_continuous(name = "Coefficient of variation") + -->
-<!--   labs(title = glue("Spearman's &rho; = {round(spear_rho_cv,4)}")) + -->
-<!--   theme_bw() + -->
-<!--   theme(plot.title = element_markdown()) -->
-
-<!-- ``` -->
 
 
 ## Explore growth rate data
