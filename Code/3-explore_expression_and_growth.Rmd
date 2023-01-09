@@ -481,7 +481,8 @@ fig_perm <- perm_df %>%
     aes(x = pearsons, fill = set) +
     geom_density(alpha = 0.5) +
     scale_x_continuous(
-      name = "Pearson's *r* (individual gene expression vs growth)<br />**GCI**"
+      #name = "Pearson's *r* (individual gene expression vs growth)<br />**GCI**"
+      name = "GCI: Pearson's *r* (individual gene expression vs growth)"
     ) +
     scale_y_continuous(name = "Density") +
     scale_fill_manual(
