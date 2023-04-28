@@ -1,6 +1,6 @@
 # Growth-expression-translation 
 
-Repository for [Johnson, M.M., Hockenberry, A.J., McGuffie, M.J., Vieira, L.C., & Wilke, C.O. 2022. Growth-dependent gene expression variation influences the strength of codon usage biases.]() 
+Repository for [Johnson, M. M., Hockenberry, A. J., McGuffie, M. J., Vieira, L. C., & Wilke, C. O. (2023). Growth-dependent gene expression variation influences the strength of codon usage biases. bioRxiv, 2023-03.](https://www.biorxiv.org/content/10.1101/2023.03.14.532645v1.abstract) 
 
 ## Repo organization
 `Code`: includes all scripts for data processing, analysis, and visualization.
