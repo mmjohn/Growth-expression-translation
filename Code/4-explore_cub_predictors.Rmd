@@ -538,6 +538,9 @@ lm_exp_gci <- lm(CAI ~ mean + lin_r, data = full_df)
 glance(lm_exp_gci)
 tidy(lm_exp_gci)
 
+# check for collinearity issues
+car::vif(lm_exp_gci) 
+
 ```
 
 

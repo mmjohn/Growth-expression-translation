@@ -1,6 +1,6 @@
 ## Organization
 
-`ecoli_info/`: includes data files used as *E. coli* genome reference, files with species-specific metrics of CUB, and files used to classify core and essential genes.
+`ecoli_info/`: includes data files used as *E. coli* genome reference, files with species-specific metrics of CUB, and files used to classify core and essential genes. The file `at_rich_genes.csv` contains AT-rich genes, identified as group 3 genes by [dos Reis et al. 2003](https://academic.oup.com/nar/article/31/23/6976/2904389#55552345).
 
 `genes_GCI/`: includes files containing lists of genes with positive or negative GCI values for most data sets, output from `Code/3-explore_expression_and_growth.Rmd`.
 
