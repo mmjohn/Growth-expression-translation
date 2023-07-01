@@ -89,10 +89,26 @@ meta_df <- read_tsv(analysis_files$meta_file)
 
 exp_df <- read_tsv(analysis_files$expression_file)
 
-exp_sum_df <- read_tsv(analysis_files$summary_file)
+exp_sum_df <- read_tsv(analysis_files$summary_file) # keeping this in but this file is never used - stats calculated in R Markdown files now
 
 full_df <- read_tsv(analysis_files$cub_file) %>% 
   select(locus_tag, gene)
+
+```
+
+```{r, eval=FALSE}
+
+# pull out full neutral data set with no ALE, knock-out, or mutant strains
+# completing this hear instead of in 1a-process_expression_data_ECOLI.ipynb because of dependency issues on cluster at time of creation
+meta_df <- meta_df %>% 
+  filter(`Evolved Sample` == "No") %>% # remove ALE strains (leaves 48 out of 103 conditions)
+  filter(!grepl('del', `Strain Description`)) %>% # remove knock-out strains (leaves 32 out of 103 conditions)
+  filter(`Strain Description` %in% c('Escherichia coli K-12 MG1655', 'Escherichia coli BW25113')) # remove mutant/knock-in strains (leaves 28 conditions)
+
+exp_df <- exp_df %>% select(c(`log-TPM`, meta_df$Simple_sample_id))
+
+write_tsv(meta_df, here("Data", "processed_data", "processed_metadata_ecoli_NEUTRAL_WT.tsv"))
+write_tsv(exp_df, here("Data", "processed_data", "processed_expression_ecoli_NEUTRAL_WT.tsv"))
 
 ```
 
