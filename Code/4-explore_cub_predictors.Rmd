@@ -545,8 +545,9 @@ fig_3
 ```{r, include=FALSE, eval=FALSE}
 
 save_plot(
-  file.path(
-    path_to_figures, 
+  here(
+    'Manuscript', 
+    'Figures',
     glue('fig_{metric}_exp_gr_{data_tag}.png')   # file name
   ),
   fig_3, 
