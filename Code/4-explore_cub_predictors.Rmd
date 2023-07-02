@@ -116,6 +116,28 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```
 
+```{r}
+
+if (data_tag == "ecoli_non_at_rich") {
+  
+  # read in list of AT-rich genes from dos Reis et al. 2003
+  at_rich_df <- read_csv(
+    here('Data', 'ecoli_info', 'at_rich_genes.csv'),
+    col_names = c('locus_tag', 'gene'),
+    show_col_types = FALSE
+  )
+  
+  # filter out AT-rich genes
+  exp_df <- exp_df %>% 
+    filter(!`log-TPM` %in% at_rich_df$gene)
+  
+  exp_sum_df <- exp_sum_df %>% 
+    filter(!`log-TPM` %in% at_rich_df$gene)
+  
+}
+
+```
+
 
 #### Merge data
 
@@ -155,7 +177,7 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutra
 
 ```{r, message=FALSE}
 
-if (data_tag == "ecoli_full") {
+if (data_tag %in% c("ecoli_full", "ecoli_non_at_rich")) {
   # get df
   corr_df <- full_df %>% 
     select(locus_tag, CAI) %>% 
@@ -246,7 +268,7 @@ min_corr <- exp_cub_corr %>%
 max_corr <- exp_cub_corr %>% 
   filter(r2 == max(r2))
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_non_at_rich")) {
   
   fig_corr_min <- corr_df %>% 
     ggplot() +
@@ -347,7 +369,6 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
       theme(plot.title = element_markdown())
   
 }
-
 
 fig_corr_grow <- meta_df %>% 
   select(Simple_sample_id, `Growth Rate (1/hr)`) %>% 
@@ -721,7 +742,7 @@ plot_both_lm <- function(r2_x, r2_y, x_lab) {
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_both, color = fct_rev(lin_r)), 
-      size = 1
+      linewidth = 1
     ) +
     # geom_richtext(
     #   data = r2_both_text,
@@ -762,7 +783,7 @@ plot_inter_lm <- function(r2_x, r2_y, x_lab) {
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_inter, color = fct_rev(lin_r)), 
-      size = 1
+      linewidth = 1
     ) +
     # geom_richtext(
     #   data = r2_inter_text,
@@ -782,7 +803,7 @@ plot_inter_lm <- function(r2_x, r2_y, x_lab) {
 }
 
 # set values specific to data sets for plots
-if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt", "ecoli_non_at_rich")) {
   x <- 2
   y <- .8
   lab <- "Expression (mean, log TPM)"

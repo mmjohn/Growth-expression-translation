@@ -110,6 +110,20 @@ full_df <- read_tsv(analysis_files$cub_file) %>%
 
 if (data_tag == "ecoli_non_at_rich") {
   
+  # read in list of AT-rich genes from dos Reis et al. 2003
+  at_rich_df <- read_csv(
+    here('Data', 'ecoli_info', 'at_rich_genes.csv'),
+    col_names = c('locus_tag', 'gene'),
+    show_col_types = FALSE
+  )
+  
+  # filter out AT-rich genes
+  exp_df <- exp_df %>% 
+    filter(!`log-TPM` %in% at_rich_df$gene)
+  
+  exp_sum_df <- exp_sum_df %>% 
+    filter(!`log-TPM` %in% at_rich_df$gene)
+  
 }
 
 ```
@@ -170,7 +184,7 @@ max_names <- colnames(max_cond_corr_df)
 colnames(max_cond_corr_df) <- c("cond1", "cond2")
 
 # store position for R^2 values in plot
-if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt", "ecoli_non_at_rich")) {
   x_pos = 3
   y_pos = 13.5
 } else if (data_tag == "ecoli_prot") {
@@ -194,7 +208,7 @@ r2_max_text <- data.frame(
 )
 
 # store axes limits
-if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt", "ecoli_non_at_rich")) {
   xy_min <- 0
   xy_max <- 15
 } else if (data_tag %in% c("ecoli_prot", "scer_prot")) {
@@ -462,7 +476,7 @@ make_cor_plot <- function(x, gname) {
     ggtitle(glue("{gname}"))
 }
 
-if (data_tag == "ecoli_full") {
+if (data_tag %in% c("ecoli_full", "ecoli_non_at_rich")) {
   
   fig_ant_cor <- make_cor_plot(b4658_2, "yghX")
   fig_pos_cor <- make_cor_plot(b2780, "pyrG")
