@@ -34,41 +34,51 @@ data_key <- tibble(
     'ecoli_full', 
     'ecoli_sparse', 
     'ecoli_neutral',
+    'ecoli_neutral_wt',
+    'ecoli_non_at_rich',
     'ecoli_prot',
     'scer_rna', 
     'scer_prot'
   ),
-  cub_file = c(
-    here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    here('Data', 'ecoli_info/', 'current_ecoli_master_table.tsv'),
-    here('Data', 'scer_info/', 'current_scer_master_table.tsv'),
-    here('Data', 'scer_info/', 'current_scer_master_table.tsv')
-  ),
   meta_file = c(
-    here('Data', 'processed_data/', 'processed_metadata_ecoli.tsv'),
-    here('Data', 'processed_data/', 'processed_metadata_ecoli_SPARSE.tsv'),
-    here('Data', 'processed_data/', 'processed_metadata_ecoli_NEUTRAL.tsv'),
-    here('Data', 'processed_data/', 'processed_metadata_ecoli_PROTEIN.tsv'),
-    here('Data', 'processed_data/', 'processed_metadata_scer_RNA.tsv'),
-    here('Data', 'processed_data/', 'processed_metadata_scer_PROTEIN.tsv')
+    here("Data", "processed_data", "processed_metadata_ecoli.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_NEUTRAL.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_NEUTRAL_WT.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli.tsv"),
+    here("Data", "processed_data", "processed_metadata_ecoli_PROTEIN.tsv"),
+    here("Data", "processed_data", "processed_metadata_scer_RNA.tsv"),
+    here("Data", "processed_data", "processed_metadata_scer_PROTEIN.tsv")
   ),
   expression_file = c(
-    here('Data', 'processed_data/', 'processed_expression_ecoli.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_ecoli_SPARSE.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_ecoli_NEUTRAL.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_ecoli_PROTEIN.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_scer_RNA.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_scer_PROTEIN.tsv')
+    here("Data", "processed_data", "processed_expression_ecoli.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_NEUTRAL.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_NEUTRAL_WT.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli.tsv"),
+    here("Data", "processed_data", "processed_expression_ecoli_PROTEIN.tsv"),
+    here("Data", "processed_data", "processed_expression_scer_RNA.tsv"),
+    here("Data", "processed_data", "processed_expression_scer_PROTEIN.tsv")
   ),
   summary_file = c(
-    here('Data', 'processed_data/', 'processed_expression_summary_ecoli.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_summary_ecoli_SPARSE.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_summary_ecoli_PROTEIN.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_summary_scer_RNA.tsv'),
-    here('Data', 'processed_data/', 'processed_expression_summary_scer_PROTEIN.tsv')
+    here("Data", "processed_data", "processed_expression_summary_ecoli.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli_SPARSE.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli_NEUTRAL.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli_NEUTRAL_WT.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_ecoli_PROTEIN.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_scer_RNA.tsv"),
+    here("Data", "processed_data", "processed_expression_summary_scer_PROTEIN.tsv")
+  ),
+  cub_file = c(
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "ecoli_info", "current_ecoli_master_table.tsv"),
+    here("Data", "scer_info", "current_scer_master_table.tsv"),
+    here("Data", "scer_info", "current_scer_master_table.tsv")
   )
 )
 
@@ -111,7 +121,7 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```{r, message=FALSE}
 
-if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt", "ecoli_non_at_rich")) {
   full_df <- inner_join(
     full_df, 
     exp_sum_df, 
@@ -187,6 +197,20 @@ if (data_tag == "ecoli_full") {
       value = "pearsons"
     ) %>% 
     mutate(r2 = pearsons^2)
+} else if (data_tag == "ecoli_neutral_wt") {
+  # get df
+  corr_df <- full_df %>% 
+    select(locus_tag, CAI) %>% 
+    left_join(., exp_df, by = c("locus_tag" = "log-TPM")) 
+  # correlations
+  exp_cub_corr <- cor(corr_df$CAI, corr_df[3:30], method = "pearson") %>% 
+    as_tibble() %>% 
+    gather(
+      .,
+      key = "condition",
+      value = "pearsons"
+    ) %>% 
+    mutate(r2 = pearsons^2)
 } else if (data_tag == "ecoli_prot") {
   # get df
   corr_df <- full_df %>% 
@@ -238,6 +262,26 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral")) {
       aes(x = `rpoB__rpoBE672K_lb`, y = CAI) +
       geom_point(alpha = 0.5) +
       scale_x_continuous(name = "Condition expression (log TPM)") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+} else if (data_tag == "ecoli_neutral_wt") {
+  
+  fig_corr_min <- corr_df %>% 
+    ggplot() +
+      aes(x = `ica__cytd_rib`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
+      theme_minimal_grid() +
+      labs(title = glue('*R*<sup>2</sup> = {round(min_corr$r2, 3)}')) +
+      theme(plot.title = element_markdown())
+  
+  fig_corr_max <- corr_df %>% 
+    ggplot() +
+      aes(x = `ica__arg_sbt`, y = CAI) +
+      geom_point(alpha = 0.5) +
+      scale_x_continuous(name = "Condition expression") +
       theme_minimal_grid() +
       labs(title = glue('*R*<sup>2</sup> = {round(max_corr$r2, 3)}')) +
       theme(plot.title = element_markdown())
@@ -641,7 +685,7 @@ plot_exp_lm <- function(r2_x, r2_y, x_lab) {
       data = gci_models, 
       aes(mean, pred_cai_lm_exp), 
       color = "#CC4678FF", # use color of GCI=0 in other plots
-      size = 1
+      linewidth = 1
     ) +
     # geom_richtext(
     #   data = r2_exp_text,
@@ -738,7 +782,7 @@ plot_inter_lm <- function(r2_x, r2_y, x_lab) {
 }
 
 # set values specific to data sets for plots
-if (data_tag %in% c("ecoli_full", "ecoli_sparse")) {
+if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutral_wt")) {
   x <- 2
   y <- .8
   lab <- "Expression (mean, log TPM)"
