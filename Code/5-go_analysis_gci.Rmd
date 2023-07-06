@@ -40,7 +40,6 @@ library(cowplot)
 
 ## Load data
 ```{r}
-
 data <- read_csv(here('Data', 'genes_GCI', 'ecoli_full_pos_corr.csv'))
 neg_data <- read_csv(here('Data', 'genes_GCI', 'ecoli_full_neg_corr.csv'))
 
@@ -455,7 +454,7 @@ save_plot(
 
 
 
-
+# quick look at GCI distributions for AT-rich genes vs non-AT-rich genes
 ```{r}
 
 at_rich_df <- read_csv(
@@ -494,7 +493,7 @@ fig_at_gci <- at_rich_test_df %>%
     label.color = NA,
     inherit.aes = FALSE
   ) +
-  scale_x_continuous(name = "GCI") +
+  scale_x_continuous(name = "GCI", limits = c(-0.9, 0.7)) +
   scale_y_continuous(name = "Density") +
   scale_fill_viridis_d(name = "Gene type", option = "E") +
   theme_minimal_grid() + 

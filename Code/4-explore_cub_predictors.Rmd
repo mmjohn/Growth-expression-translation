@@ -707,7 +707,7 @@ plot_exp_lm <- function(r2_x, r2_y, x_lab) {
       data = gci_models, 
       aes(mean, pred_cai_lm_exp), 
       color = "#CC4678FF", # use color of GCI=0 in other plots
-      linewidth = 1
+      size = 1
     ) +
     # geom_richtext(
     #   data = r2_exp_text,
@@ -743,7 +743,7 @@ plot_both_lm <- function(r2_x, r2_y, x_lab) {
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_both, color = fct_rev(lin_r)), 
-      linewidth = 1
+      size = 1
     ) +
     # geom_richtext(
     #   data = r2_both_text,
@@ -784,7 +784,7 @@ plot_inter_lm <- function(r2_x, r2_y, x_lab) {
     geom_line(
       data = gci_models, 
       aes(mean, pred_cai_lm_inter, color = fct_rev(lin_r)), 
-      linewidth = 1
+      size = 1
     ) +
     # geom_richtext(
     #   data = r2_inter_text,
