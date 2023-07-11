@@ -29,20 +29,28 @@ Figure S4: `fig_gene_con_ecoli_sparse.png` produced by `3-explore_expression_and
 
 Figure S5: `fig_gene_con_ecoli_neutral.png` produced by `3-explore_expression_and_growth.Rmd`.
 
-Figure S6: `fig_gene_con_ecoli_prot.png` produced by `3-explore_expression_and_growth.Rmd`.
+Figure S6: `fig_gene_con_ecoli_neutral_wt.png` produced by `3-explore_expression_and_growth.Rmd`.
 
-Figure S7: `fig_gene_con_scer_rna.png` produced by `3-explore_expression_and_growth.Rmd`.
+Figure S7: `fig_gene_con_ecoli_prot.png` produced by `3-explore_expression_and_growth.Rmd`.
 
-Figure S8: `fig_gene_con_scer_prot.png` produced by `3-explore_expression_and_growth.Rmd`.
+Figure S8: `fig_gene_con_scer_rna.png` produced by `3-explore_expression_and_growth.Rmd`.
 
-Figure S9: `fig_CAI_gci_model_ecoli_sparse.png` produced by `4-explore_cub_predictors.Rmd`.
+Figure S9: `fig_gene_con_scer_prot.png` produced by `3-explore_expression_and_growth.Rmd`.
 
-Figure S10: `fig_CAI_gci_model_ecoli_neutral.png` produced by `4-explore_cub_predictors.Rmd`.
+Figure S10: `fig_CAI_gci_model_ecoli_sparse.png` produced by `4-explore_cub_predictors.Rmd`.
 
-Figure S11: `fig_CAI_gci_model_ecoli_prot.png` produced by `4-explore_cub_predictors.Rmd`.
+Figure S11: `fig_CAI_gci_model_ecoli_neutral.png` produced by `4-explore_cub_predictors.Rmd`.
 
-Figure S12: `fig_CAI_gci_model_scer_rna.png` produced by `4-explore_cub_predictors.Rmd`.
+Figure S12: `fig_CAI_gci_model_ecoli_neutral_wt.png` produced by `4-explore_cub_predictors.Rmd`.
 
-Figure S13: `fig_CAI_gci_model_scer_prot.png` produced by `4-explore_cub_predictors.Rmd`.
+Figure S13: `fig_at_rich_gci.png` produced by `5-go_analysis_gci.Rmd`.
+
+Figure S14: `fig_CAI_gci_model_ecoli_non_at_rich.png` produced by `4-explore_cub_predictors.Rmd`.
+
+Figure S15: `fig_CAI_gci_model_ecoli_prot.png` produced by `4-explore_cub_predictors.Rmd`.
+
+Figure S16: `fig_CAI_gci_model_scer_rna.png` produced by `4-explore_cub_predictors.Rmd`.
+
+Figure S17: `fig_CAI_gci_model_scer_prot.png` produced by `4-explore_cub_predictors.Rmd`.
 
 
