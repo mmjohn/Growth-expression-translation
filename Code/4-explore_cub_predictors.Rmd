@@ -116,6 +116,7 @@ exp_sum_df <- read_tsv(analysis_files$summary_file)
 
 ```
 
+Remove AT-rich outlier genes for analysis (note: to look at distribution of at-rich vs all other genes, skip to relevant code block)
 ```{r}
 
 if (data_tag == "ecoli_non_at_rich") {
@@ -137,7 +138,7 @@ if (data_tag == "ecoli_non_at_rich") {
   
   non_at_genes <- full_df %>% filter(at_rich == FALSE) %>% pull(locus_tag)
   
-  # filter out AT-rich genes
+  # filter out AT-rich genes - do not run these lines if you just want to create GCI plot
   exp_df <- exp_df %>% 
     filter(`log-TPM` %in% non_at_genes)
   
@@ -915,9 +916,32 @@ save_plot(
 # Supplemental Figure AT-rich genes
 ```{r}
 
+# read in list of AT-rich genes from dos Reis et al. 2003
+at_rich_df <- read_csv(
+  here('Data', 'ecoli_info', 'at_rich_genes.csv'),
+  col_names = c('locus_tag', 'gene'),
+  show_col_types = FALSE
+)
+  
+full_df <- full_df %>%
+  mutate(
+    at_rich =
+      case_when(
+        locus_tag %in% at_rich_df$gene ~ TRUE,
+        gene %in% at_rich_df$locus_tag ~ TRUE,
+        TRUE ~ FALSE
+      )
+  )
+
+at_gci_df <- inner_join( 
+     exp_sum_df, 
+     full_df,
+     by = c("log-TPM"="locus_tag")
+) 
+
 t_test_at_results <- t.test(
-  filter(full_df, at_rich==TRUE)$lin_r, 
-  filter(full_df, at_rich==FALSE)$lin_r)
+  filter(at_gci_df, at_rich==TRUE)$lin_r, 
+  filter(at_gci_df, at_rich==FALSE)$lin_r)
 t_test_at_results$p.value  # 2.944941e-64
 
 ttest_text_at <- data.frame(
@@ -929,7 +953,7 @@ ttest_text_at <- data.frame(
   y = 1.75
 )
 
-fig_at_gci <- full_df %>%  
+fig_at_gci <-at_gci_df %>%  
   mutate(at_rich = case_when(
     at_rich == TRUE ~ 'AT-rich',
     at_rich == FALSE ~ 'not AT-rich')
