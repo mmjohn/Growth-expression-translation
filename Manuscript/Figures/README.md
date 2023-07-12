@@ -43,7 +43,7 @@ Figure S11: `fig_CAI_gci_model_ecoli_neutral.png` produced by `4-explore_cub_pre
 
 Figure S12: `fig_CAI_gci_model_ecoli_neutral_wt.png` produced by `4-explore_cub_predictors.Rmd`.
 
-Figure S13: `fig_at_rich_gci.png` produced by `5-go_analysis_gci.Rmd`.
+Figure S13: `fig_at_rich_gci.png` produced by `4-explore_cub_predictors.Rmd`.
 
 Figure S14: `fig_CAI_gci_model_ecoli_non_at_rich.png` produced by `4-explore_cub_predictors.Rmd`.
 

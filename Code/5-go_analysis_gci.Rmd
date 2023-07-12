@@ -453,68 +453,6 @@ save_plot(
 ```
 
 
-
-# quick look at GCI distributions for AT-rich genes vs non-AT-rich genes
-```{r}
-
-at_rich_df <- read_csv(
-  here('Data', 'ecoli_info', 'at_rich_genes.csv'),
-  col_names = c('locus_tag', 'gene'),
-  show_col_types = FALSE
-)
-
-at_rich_test_df <- 
-  full_join(data, neg_data) %>% 
-  mutate(
-    set = case_when(
-      locus_tag %in% at_rich_df$gene ~ 'AT-rich',
-      !locus_tag %in% at_rich_df$gene ~ 'not AT-rich'
-    )
-  )
-
-t_test_at_results <- t.test(filter(at_rich_test_df, set=='AT-rich')$GCI, filter(at_rich_test_df, set=='not AT-rich')$GCI)
-t_test_at_results$p.value  # 3.276559e-73
-
-ttest_text_at <- data.frame(
-  label = glue::glue(
-    'p-value = {scales::scientific(
-    t_test_at_results$p.value, digits = 3
-    )}'),
-  x = 0.4, 
-  y = 1.75
-)
-
-fig_at_gci <- at_rich_test_df %>%  
-  ggplot(aes(x = GCI, fill = set)) +
-  geom_density(alpha = 0.5) +
-  geom_richtext(
-    data = ttest_text_at,
-    aes(x = x, y = y, label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
-  scale_x_continuous(name = "GCI", limits = c(-0.9, 0.7)) +
-  scale_y_continuous(name = "Density") +
-  scale_fill_viridis_d(name = "Gene type", option = "E") +
-  theme_minimal_grid() + 
-  theme(plot.background = element_rect(fill="white", color = NA))
-
-fig_at_gci
-
-save_plot(
-  here('Manuscript', 'Figures', 'fig_at_rich_gci.png'),
-  fig_at_gci, 
-  ncol = 1, 
-  nrow = 1, 
-  base_height = 5.71, #base_height = 5.71,
-  base_asp = 1.618, 
-  base_width = NULL
-)
-
-
-```
-
-
 ## Referências:
 
 [Paper clusterProfile](https://www.sciencedirect.com/science/article/pii/S2666675821000667)  
