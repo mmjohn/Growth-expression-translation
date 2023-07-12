@@ -117,12 +117,22 @@ if (data_tag == "ecoli_non_at_rich") {
     show_col_types = FALSE
   )
   
+  full_df <- full_df %>% 
+    mutate(at_rich = 
+             case_when(
+               locus_tag %in% at_rich_df$gene ~ TRUE,
+               gene %in% at_rich_df$locus_tag ~ TRUE,
+               TRUE ~ FALSE
+             ))
+  
+  non_at_genes <- full_df %>% filter(at_rich == FALSE) %>% pull(locus_tag)
+  
   # filter out AT-rich genes
   exp_df <- exp_df %>% 
-    filter(!`log-TPM` %in% at_rich_df$gene)
+    filter(`log-TPM` %in% non_at_genes)
   
   exp_sum_df <- exp_sum_df %>% 
-    filter(!`log-TPM` %in% at_rich_df$gene)
+    filter(`log-TPM` %in% non_at_genes)
   
 }
 
