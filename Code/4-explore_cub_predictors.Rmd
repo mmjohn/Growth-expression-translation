@@ -944,14 +944,14 @@ t_test_at_results <- t.test(
   filter(at_gci_df, at_rich==FALSE)$lin_r)
 t_test_at_results$p.value  # 2.944941e-64
 
-ttest_text_at <- data.frame(
-  label = glue::glue(
-    'p-value = {scales::scientific(
-    t_test_at_results$p.value, digits = 3
-    )}'),
-  x = 0.4, 
-  y = 1.75
-)
+# ttest_text_at <- data.frame(
+#   label = glue::glue(
+#     'p-value = {scales::scientific(
+#     t_test_at_results$p.value, digits = 3
+#     )}'),
+#   x = 0.4, 
+#   y = 1.75
+# )
 
 fig_at_gci <-at_gci_df %>%  
   mutate(at_rich = case_when(
@@ -960,12 +960,12 @@ fig_at_gci <-at_gci_df %>%
   ) %>% 
   ggplot(aes(x = lin_r, fill = at_rich)) +
   geom_density(alpha = 0.5) +
-  geom_richtext(
-    data = ttest_text_at,
-    aes(x = x, y = y, label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
+  # geom_richtext(
+  #   data = ttest_text_at,
+  #   aes(x = x, y = y, label = label),
+  #   label.color = NA,
+  #   inherit.aes = FALSE
+  # ) +
   scale_x_continuous(name = "GCI", limits = c(-0.9, 0.7)) +
   scale_y_continuous(name = "Density") +
   scale_fill_viridis_d(name = "Gene type", option = "E") +

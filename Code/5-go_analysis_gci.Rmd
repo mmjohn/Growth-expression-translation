@@ -386,26 +386,26 @@ t_test_results4 <- t.test(core_gci4, access_gci4)
 t_test_results4$p.value  # 3.252126e-65
 
 # use essential data set from Adam in figure
-# create label data set
-ttest_text <- data.frame(
-  label = glue::glue(
-    'p-value = {scales::scientific(
-    t_test_results$p.value, digits = 3
-    )}'),
-  x = 0.3, 
-  y = 1.4
-)
+# # create label data set
+# ttest_text <- data.frame(
+#   label = glue::glue(
+#     'p-value = {scales::scientific(
+#     t_test_results$p.value, digits = 3
+#     )}'),
+#   x = 0.3, 
+#   y = 1.4
+# )
 
 fig_core_gci <- gci_genomes_df %>% 
   drop_na(core1) %>% 
   ggplot(aes(x = pearsons, fill = core1)) +
   geom_density(alpha = 0.5) +
-  geom_richtext(
-    data = ttest_text,
-    aes(x = x, y = y, label = label),
-    label.color = NA,
-    inherit.aes = FALSE
-  ) +
+  # geom_richtext(
+  #   data = ttest_text,
+  #   aes(x = x, y = y, label = label),
+  #   label.color = NA,
+  #   inherit.aes = FALSE
+  # ) +
   scale_x_continuous(name = "GCI") +
   scale_y_continuous(name = "Density") +
   scale_fill_viridis_d(name = "Gene type") +
