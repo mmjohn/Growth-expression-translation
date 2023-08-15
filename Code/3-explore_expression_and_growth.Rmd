@@ -233,7 +233,7 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutra
 fig_max <- max_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
   geom_point(color = "black", alpha = 0.3) +
-  #coord_fixed() +
+  coord_fixed() +
   scale_x_continuous(
     limits = c(xy_min, xy_max), 
     expand = c(0.01, 0.01),
@@ -293,7 +293,7 @@ r2_min_text <- data.frame(
 fig_min <- min_cond_corr_df %>% 
   ggplot(aes(x = cond1, y = cond2)) +
   geom_point(color = "black", alpha = 0.3) +
-  #coord_fixed() +
+  coord_fixed() +
   scale_x_continuous(
     limits = c(xy_min, xy_max),
     expand = c(0.01, 0.01),
@@ -336,7 +336,7 @@ fig_2 <- plot_grid(
   fig_exp_cond_corr, fig_2b,
   nrow = 1,
   labels = "AUTO",
-  scale = c(1, 0.85)
+  scale = c(0.85, 1)
 )
 
 fig_2
@@ -617,17 +617,99 @@ if (data_tag %in% c("ecoli_full", "ecoli_sparse", "ecoli_neutral", "ecoli_neutra
 
 write_csv(
   genes_positive, 
-  glue('{data_tag}_pos_corr.csv'),
+  here(
+    'Data',
+    'genes_GCI',
+    glue('{data_tag}_pos_corr.csv')
+  ),
   append = FALSE
 )
 
 write_csv(
   genes_negative, 
-  glue('{data_tag}_neg_corr.csv'),
+  here(
+    'Data',
+    'genes_GCI',
+    glue('{data_tag}_neg_corr.csv')
+  ),
   append = FALSE
 )
 
 ```
+
+```{r}
+mean_avg_exp <- mean(exp_sum_df$mean)
+
+genes_pos_high <- exp_sum_df %>% 
+  filter(lin_r > 0, mean > mean_avg_exp) %>% 
+  select(`log-TPM`, mean, lin_r) %>% 
+    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
+
+genes_pos_low <- exp_sum_df %>% 
+  filter(lin_r > 0, mean <= mean_avg_exp) %>% 
+  select(`log-TPM`, mean, lin_r) %>% 
+    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
+
+genes_neg_high <- exp_sum_df %>% 
+  filter(lin_r < 0, mean > mean_avg_exp) %>% 
+  select(`log-TPM`, mean, lin_r) %>% 
+    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
+
+genes_neg_low <- exp_sum_df %>% 
+  filter(lin_r < 0, mean <= mean_avg_exp) %>% 
+  select(`log-TPM`, mean, lin_r) %>% 
+    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
+
+colnames(genes_pos_high) <- c("locus_tag", "mean_exp", "gci", "gene_name")
+colnames(genes_pos_low) <-c("locus_tag", "mean_exp", "gci", "gene_name")
+colnames(genes_neg_high) <- c("locus_tag", "mean_exp", "gci", "gene_name")
+colnames(genes_neg_low) <- c("locus_tag", "mean_exp", "gci", "gene_name")
+
+write_csv(
+  genes_pos_high, 
+  here(
+    'Data',
+    'genes_GCI',
+    glue('{data_tag}_pos_corr_high_exp.csv')
+  ),
+  append = FALSE
+)
+
+write_csv(
+  genes_pos_low, 
+  here(
+    'Data',
+    'genes_GCI',
+    glue('{data_tag}_pos_corr_low_exp.csv')
+  ),
+  append = FALSE
+)
+
+write_csv(
+  genes_neg_high, 
+  here(
+    'Data',
+    'genes_GCI',
+    glue('{data_tag}_neg_corr_high_exp.csv')
+  ),
+  append = FALSE
+)
+
+write_csv(
+  genes_neg_low, 
+  here(
+    'Data',
+    'genes_GCI',
+    glue('{data_tag}_neg_corr_low_exp.csv')
+  ),
+  append = FALSE
+)
+
+
+
+```
+
+
 
 ### Session Info
 ```{r}
