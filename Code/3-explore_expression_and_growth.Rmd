@@ -168,7 +168,7 @@ fig_exp_cond_corr <- melt(cond_cor_mat^2) %>%
   geom_tile() +
   coord_fixed() +
   scale_fill_viridis_c(
-    option = "B", name = "*R*^2"
+    option = "B", name = "*R*<sup>2</sup>"
   ) +
   theme_void() +
   theme(legend.title = element_markdown())
@@ -329,9 +329,6 @@ min_names
 ### Figure 2 
 ```{r, message=FALSE}
 
-# combine figures for subplot b
-#fig_2b <- plot_grid(fig_max, fig_min, nrow = 2)
-
 fig_2 <- plot_grid(
   fig_exp_cond_corr, fig_min, fig_max,
   nrow = 1,
@@ -360,8 +357,8 @@ save_plot(
   fig_2_fixed, 
   ncol = 1, 
   nrow = 1, 
-  base_height = 5.21, #base_height = 5.71,
-  base_asp = 1.618, 
+  base_height = 3.71, #base_height = 5.71,
+  base_asp = 2.618, # 1.618
   base_width = NULL
 )
 
