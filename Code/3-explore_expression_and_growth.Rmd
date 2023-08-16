@@ -330,13 +330,13 @@ min_names
 ```{r, message=FALSE}
 
 # combine figures for subplot b
-fig_2b <- plot_grid(fig_max, fig_min, nrow = 2)
+#fig_2b <- plot_grid(fig_max, fig_min, nrow = 2)
 
 fig_2 <- plot_grid(
-  fig_exp_cond_corr, fig_2b,
+  fig_exp_cond_corr, fig_min, fig_max,
   nrow = 1,
   labels = "AUTO",
-  scale = c(0.85, 1)
+  scale = c(1, 1, 1)
 )
 
 fig_2
@@ -636,79 +636,6 @@ write_csv(
 )
 
 ```
-
-```{r}
-mean_avg_exp <- mean(exp_sum_df$mean)
-
-genes_pos_high <- exp_sum_df %>% 
-  filter(lin_r > 0, mean > mean_avg_exp) %>% 
-  select(`log-TPM`, mean, lin_r) %>% 
-    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
-
-genes_pos_low <- exp_sum_df %>% 
-  filter(lin_r > 0, mean <= mean_avg_exp) %>% 
-  select(`log-TPM`, mean, lin_r) %>% 
-    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
-
-genes_neg_high <- exp_sum_df %>% 
-  filter(lin_r < 0, mean > mean_avg_exp) %>% 
-  select(`log-TPM`, mean, lin_r) %>% 
-    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
-
-genes_neg_low <- exp_sum_df %>% 
-  filter(lin_r < 0, mean <= mean_avg_exp) %>% 
-  select(`log-TPM`, mean, lin_r) %>% 
-    left_join(., full_df, by = c("log-TPM" = "locus_tag"))
-
-colnames(genes_pos_high) <- c("locus_tag", "mean_exp", "gci", "gene_name")
-colnames(genes_pos_low) <-c("locus_tag", "mean_exp", "gci", "gene_name")
-colnames(genes_neg_high) <- c("locus_tag", "mean_exp", "gci", "gene_name")
-colnames(genes_neg_low) <- c("locus_tag", "mean_exp", "gci", "gene_name")
-
-write_csv(
-  genes_pos_high, 
-  here(
-    'Data',
-    'genes_GCI',
-    glue('{data_tag}_pos_corr_high_exp.csv')
-  ),
-  append = FALSE
-)
-
-write_csv(
-  genes_pos_low, 
-  here(
-    'Data',
-    'genes_GCI',
-    glue('{data_tag}_pos_corr_low_exp.csv')
-  ),
-  append = FALSE
-)
-
-write_csv(
-  genes_neg_high, 
-  here(
-    'Data',
-    'genes_GCI',
-    glue('{data_tag}_neg_corr_high_exp.csv')
-  ),
-  append = FALSE
-)
-
-write_csv(
-  genes_neg_low, 
-  here(
-    'Data',
-    'genes_GCI',
-    glue('{data_tag}_neg_corr_low_exp.csv')
-  ),
-  append = FALSE
-)
-
-
-
-```
-
 
 
 ### Session Info
